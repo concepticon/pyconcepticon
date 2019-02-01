@@ -12,7 +12,6 @@ from clldutils.markup import Table
 from clldutils.misc import format_size
 from cdstarcat.catalog import Catalog
 
-import pyconcepticon
 from pyconcepticon.util import (
     rewrite, CS_ID, CS_GLOSS, SourcesCatalog, UnicodeWriter, read_dicts,
 )
@@ -423,7 +422,7 @@ def cl_stats(cl):
 def readme_conceptlists(api, cls, args):
     table = Table('name', '# mapped', '% mapped', 'mergers')
     for cl in cls:
-        args.log.info('processing <'+cl.path.name+'>')
+        args.log.info('processing <' + cl.path.name + '>')
         mapped, mapped_ratio, mergers = cl_stats(cl)
         table.append([
             '[%s](%s) ' % (cl.id, cl.path.name),
@@ -487,8 +486,7 @@ def readme_concepticondata(api, cls):
             len(labels),
             sum(list(labels.values())) / len(cls),
             sum([len(v) for k, v in D.items()]) / len(D),
-            sum([len(set([label for _, label in v])) for k, v in D.items()]) /
-            len(D))
+            sum([len(set([label for _, label in v])) for k, v in D.items()]) / len(D))
     ]
 
     for attr, key in [
@@ -505,8 +503,7 @@ def readme_concepticondata(api, cls):
                 len(set([label for _, label in v])),
                 len(set([clist for clist, _ in v])),
                 ', '.join(sorted(set(
-                    ['«{0}»'.format(
-                        label.replace('*', '`*`')) for _, label in v])))
+                    ['«{0}»'.format(label.replace('*', '`*`')) for _, label in v])))
             ])
         txt.append('## Twenty Most {0} Concept Sets\n\n{1}\n'.format(
             attr, table.render()))
@@ -547,7 +544,7 @@ def upload_sources(args):
                 spec = lcat.get(clid)
                 if not spec:
                     _, _, obj = list(cat.create(fname, {'collection': 'concepticon'}))[0]
-                    spec = lcat.add(clid, obj)
+                    lcat.add(clid, obj)
 
         for key in sorted(lcat.items):
             spec = lcat.get(key)
@@ -605,10 +602,7 @@ def check(args):
             matches = [m for m in o.concepts if o.concepts[m].concepticon_id == c]
             for i, m in enumerate(matches, 1):
                 message = '#%d %s = "%s"' % (
-                    i,
-                    api.conceptsets[c].gloss,
-                    getattr(o.concepts[m], 'english', '')
-                )
+                    i, api.conceptsets[c].gloss, getattr(o.concepts[m], 'english', ''))
                 _pprint(o.id, 'MERGE', c, message)
 
     def _get_missing(o, _):
@@ -654,70 +648,51 @@ def check_new(args):
         return [(i, key) for i, key in enumerate(to_check)
                 if key in known_items or known_items.add(key)]
 
-    for index, entry_to_check in enumerate(list_to_check):
+    for index, entry_to_check in enumerate(list_to_check, start=1):
         # Test if gloss matches Concepticon ID:
+        msg = "Gloss {0} in line {1} doesn't match ID {2}.".format(
+            entry_to_check['CONCEPTICON_GLOSS'], str(index), entry_to_check['CONCEPTICON_ID'])
         try:
             if (con_glosses[entry_to_check['CONCEPTICON_ID']] !=
                     entry_to_check['CONCEPTICON_GLOSS']):
-                print("Gloss " + entry_to_check['CONCEPTICON_GLOSS'] +
-                      " in line " + str(index + 1) + " doesn't match ID " +
-                      entry_to_check['CONCEPTICON_ID'] + ".")
+                print(msg)
         except KeyError:
-            print("Gloss " + entry_to_check['CONCEPTICON_GLOSS'] +
-                  " in line " + str(index + 1) + " doesn't match ID " +
-                  entry_to_check['CONCEPTICON_ID'] + ".")
+            print(msg)
 
         # Test if gloss exists in Concepticon:
+        msg = "Gloss {0} in line {1} doesn't exist in Concepticon.".format(
+            entry_to_check['CONCEPTICON_GLOSS'], str(index))
         try:
             if (entry_to_check['CONCEPTICON_GLOSS']
                     not in con_glosses.values()):
-                print("Gloss " + entry_to_check['CONCEPTICON_GLOSS'] +
-                      " in line " + str(index + 1) +
-                      " doesn't exist in Concepticon.")
+                print(msg)
         except KeyError:
-            print("Gloss " + entry_to_check[
-                'CONCEPTICON_GLOSS'] + " in line " + str(
-                index + 1) + " doesn't exist in Concepticon.")
+            print(msg)
 
         # Test if proposed glosses (!GLOSS) have NULL ID:
+        msg = "Proposed gloss {0} in line {1} shouldn't have a CONCEPTICON_ID.".format(
+            entry_to_check['CONCEPTICON_GLOSS'], str(index))
         try:
             if (entry_to_check['CONCEPTICON_GLOSS'].startswith('!') and
                     entry_to_check['CONCEPTICON_ID']):
-                print("Proposed gloss " + entry_to_check['CONCEPTICON_GLOSS'] +
-                      " in line " + str(index + 1) +
-                      " shouldn't have a CONCEPTICON_ID.")
+                print(msg)
         except KeyError:
-            print("Proposed gloss " + entry_to_check['CONCEPTICON_GLOSS'] +
-                  " in line " + str(index + 1) +
-                  " shouldn't have a CONCEPTICON_ID.")
+            print(msg)
 
     print("\nChecking for uniquness of glosses:")
     try:
-        glosses = _get_duplicates(
-            [dict(d)['CONCEPTICON_GLOSS'] for d in list_to_check]
-        )
-
-        for double in glosses:
-            print("Gloss " + double[1] +
-                  " doubled in line " + str(double[0] + 3) + ".")
+        for double in _get_duplicates([dict(d)['CONCEPTICON_GLOSS'] for d in list_to_check]):
+            print("Gloss " + double[1] + " doubled in line " + str(double[0] + 3) + ".")
     except KeyError:
         pass
 
     print("\nChecking for uniqueness of 'NUMBER' and 'ID':")
     try:
-        concept_ids = _get_duplicates(
-            [dict(d)['ID'] for d in list_to_check]
-        )
-
-        for double in concept_ids:
+        for double in _get_duplicates([dict(d)['ID'] for d in list_to_check]):
             print("ID " + double[1] +
                   " doubled in line " + str(double[0] + 2) + ".")
 
-        numbers = _get_duplicates(
-            [dict(d)['NUMBER'] for d in list_to_check]
-        )
-
-        for double in numbers:
+        for double in _get_duplicates([dict(d)['NUMBER'] for d in list_to_check]):
             print("NUMBER " + double[1] +
                   " doubled in line " + str(double[0] + 2) + ".")
     except KeyError:
