@@ -1,5 +1,6 @@
 from collections import namedtuple
 from pathlib import Path
+import shutil
 
 import pytest
 from clldutils.path import copy
@@ -15,6 +16,16 @@ def test_validate(fixturedir, mocker, capsys):
     validate(mocker.MagicMock(repos=fixturedir))
     out, err = capsys.readouterr()
     assert 'unspecified column' in out
+
+
+def test_relink_data(tmprepos, mocker, capsys):
+    from pyconcepticon.commands import recreate_linking_data
+
+    shutil.rmtree(str(tmprepos / 'mappings'))
+    recreate_linking_data(mocker.Mock(repos=tmprepos, log=mocker.Mock(info=print)))
+    out, _ = capsys.readouterr()
+    assert 'checking' in out
+    assert tmprepos.joinpath('mappings').exists()
 
 
 def test_check_new(fixturedir, capsys, mocker, tmpdir):

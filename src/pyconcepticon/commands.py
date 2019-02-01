@@ -748,7 +748,7 @@ def test(args):  # pragma: no cover
 @command('relink-data')
 def recreate_linking_data(args):
     """
-    Regenerate pyconcepticon/data/map*.
+    Regenerate <repos>/mappings/map*.
 
     Notes
     -----
@@ -766,8 +766,7 @@ def recreate_linking_data(args):
 
 
 def _write_linking_data(api, l, args):
-    out = defaultdict(int)
-    freqs = defaultdict(int)
+    out, freqs = defaultdict(int), defaultdict(int)
 
     for clist in api.conceptlists.values():
         args.log.info("checking {clist.id}".format(clist=clist))
@@ -803,7 +802,9 @@ def _write_linking_data(api, l, args):
             else:
                 out[gloss + '///' + cset.gloss.lower(), cset.id] = freqs[cset.id]
 
-    p = Path(pyconcepticon.__file__).parent.joinpath('data', 'map-{0}.tsv'.format(l.iso2))
+    p = api.path('mappings', 'map-{0}.tsv'.format(l.iso2))
+    if not p.parent.exists():
+        p.parent.mkdir()
     with UnicodeWriter(p, delimiter='\t') as f:
         f.writerow(['ID', 'GLOSS', 'PRIORITY'])
         for i, (gloss, cid) in enumerate(sorted(out)):

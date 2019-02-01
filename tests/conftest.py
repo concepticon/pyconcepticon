@@ -1,3 +1,5 @@
+import shutil
+
 import pytest
 from pathlib import Path
 
@@ -12,3 +14,9 @@ def fixturedir():
 @pytest.fixture(scope='session')
 def api():
     return Concepticon(Path(__file__).parent / 'fixtures')
+
+
+@pytest.fixture
+def tmprepos(tmpdir):
+    shutil.copytree(str(Path(__file__).parent / 'fixtures'), str(tmpdir.join('repos')))
+    return Path(str(tmpdir.join('repos')))
