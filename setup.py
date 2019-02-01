@@ -27,7 +27,7 @@ setup(
         'attrs>=18.1.0',
         'pybtex>=0.22.2',
         'csvw>=1.4.5',
-        'clldutils>=2.6.1',
+        'clldutils>=2.6.2',
         'cdstarcat',
         'tabulate',
     ],
