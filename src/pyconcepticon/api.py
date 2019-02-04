@@ -406,3 +406,26 @@ class Concepticon(API):
         for msg, name, line in errors:
             print(_msg('error', msg, name, line))
         return not bool(errors)
+
+    def _set_operation(self, type_, *clids, **kw):
+        assert type_ in ['union', 'intersection']
+        for c, lists in compare_conceptlists(self, *clids, **kw):
+            if type_ == 'union' \
+                    or len(set([x[0] for x in lists if x[1] >= 0])) == len(clids):
+                # For union, take all conceptsets in any of the lists, for intersection only
+                # conceptsets which appear in all lists.
+                marker = '*' if not len([0 for x in lists if x[1] == 0]) else ' '
+                marker += '<' if len([x for x in lists]) < len(clids) else ' '
+                yield (
+                    marker,
+                    c,
+                    self.conceptsets[c].gloss,
+                    ', '.join(
+                        ['{0[3]} ({0[1]}, {0[0]})'.format(x) for x in
+                         lists if x[1] != 0]))
+
+    def union(self, *clids, **kw):
+        return list(self._set_operation('union', *clids, **kw))
+
+    def intersection(self, *clids, **kw):
+        return list(self._set_operation('intersection', *clids, **kw))
