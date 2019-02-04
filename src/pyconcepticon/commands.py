@@ -730,7 +730,7 @@ def test(args):  # pragma: no cover
     --------
     $ concepticon test
     """
-    if Concepticon(args.repos).check():
+    if Concepticon(args.repos).check(*args.args):
         args.log.info('all integrity tests passed: OK')
     else:
         args.log.error('inconsistent data in repository {0}'.format(args.repos))

@@ -2,6 +2,7 @@ import re
 from collections import deque, defaultdict
 from pathlib import Path
 from operator import setitem
+from functools import partial
 
 import attr
 from clldutils.apilib import DataObject
@@ -31,6 +32,12 @@ class Bag(DataObject):
     def public_fields(cls):
         return [n for n in cls.fieldnames() if not n.startswith('_')]
 
+
+def valid_int(attr_name, value):
+    try:
+        int(value)
+    except ValueError as e:
+        raise ValueError('invalid integer {0}: {1}'.format(attr_name, value))
 
 def valid_conceptlist_id(instance, attribute, value):
     if not instance.local:
@@ -171,9 +178,9 @@ class Conceptlist(Bag):
     _api = attr.ib()
     id = attr.ib(validator=valid_conceptlist_id)
     author = attr.ib()
-    year = attr.ib(converter=int)
+    year = attr.ib(converter=partial(valid_int, 'YEAR'))
     list_suffix = attr.ib()
-    items = attr.ib(converter=int)
+    items = attr.ib(converter=partial(valid_int, 'ITEMS'))
     tags = attr.ib(converter=split_ids, validator=valid_key)
     source_language = attr.ib(converter=lambda v: split(v.lower()))
     target_language = attr.ib()

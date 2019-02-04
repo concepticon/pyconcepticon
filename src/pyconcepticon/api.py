@@ -106,15 +106,17 @@ class Concepticon(API):
             for d in read_dicts(self.data_path('concepticon.tsv')))
 
     @lazyproperty
+    def conceptlists_dicts(self):
+        return read_dicts(self.data_path('conceptlists.tsv'))
+
+    @lazyproperty
     def conceptlists(self):
         """
         :returns: `dict` mapping ConceptList IDs to `Conceptlist` instances.
 
         .. note:: Individual concepts can be accessed via `Conceptlist.concepts`.
         """
-        return to_dict(
-            Conceptlist(api=self, **lowercase(d))
-            for d in read_dicts(self.data_path('conceptlists.tsv')))
+        return to_dict(Conceptlist(api=self, **lowercase(d)) for d in self.conceptlists_dicts)
 
     @lazyproperty
     def metadata(self):
@@ -238,7 +240,7 @@ class Concepticon(API):
             match, simil = cmap.get(i, [[], 100])
             yield set((e, to[m][0], to[m][1].split("///")[0], simil) for m in match)
 
-    def check(self):
+    def check(self, *clids):
         errors = []
         assert self.retirements
 
@@ -252,6 +254,17 @@ class Concepticon(API):
 
         def warning(msg, name, line=0):  # pragma: no cover
             warnings.warn(_msg('warning', msg, name, line), Warning)
+
+        for i, d in enumerate(self.conceptlists_dicts, start=1):
+            try:
+                Conceptlist(api=self, **lowercase(d))
+            except ValueError as e:
+                error(str(e), 'conceptlists.tsv', i)
+
+        if errors:
+            for msg, name, line in errors:
+                print(_msg('error', msg, name, line))
+            return not bool(errors)
 
         REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^\]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
         REF_WITHOUT_LINK_PATTERN = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
@@ -276,6 +289,8 @@ class Concepticon(API):
         # Make sure only records in the BibTeX file references.bib are referenced by
         # concept lists.
         for i, cl in enumerate(self.conceptlists.values()):
+            if clids and cl.id not in clids:
+                continue
             fl = ('conceptlists.tsv', i + 2)
             for ref in re.findall(BIB_PATTERN, cl.note) + cl.refs:
                 if ref not in refs_in_bib:
@@ -300,8 +315,10 @@ class Concepticon(API):
                     warning('no PDF found for {0}'.format(ref), 'conceptlists.tsv')
         all_refs.add('List2016a')
 
-        for ref in refs_in_bib - all_refs:
-            error('unused bibtex record: {0}'.format(ref), 'references.bib')
+        if not clids:
+            # Only report unused references if we check all concept lists!
+            for ref in refs_in_bib - all_refs:
+                error('unused bibtex record: {0}'.format(ref), 'references.bib')
 
         ref_cols = {
             'concepticon_id': set(self.conceptsets.keys()),
@@ -320,34 +337,41 @@ class Concepticon(API):
                         'invalid {0}: {1}'.format(attr, rel[attr]), 'conceptrelations', i + 2)
 
         for fname in self.data_path('conceptlists').glob('*.tsv'):
+            if clids and fname.stem not in clids:
+                continue
             if fname.stem not in self.conceptlists:  # pragma: no cover
                 error(
                     'conceptlist missing in conceptlists.tsv: {0}'.format(fname.name), '')
 
+        broken_cls = []
         for cl in self.conceptlists.values():
-            for i, concept in enumerate(cl.concepts.values()):
-                if i == 0:  # pragma: no cover
-                    for lg in cl.source_language:
-                        if lg.lower() not in concept.cols:
-                            error('missing source language col %s' % lg.upper(), cl.id)
+            try:
+                for i, concept in enumerate(cl.concepts.values()):
+                    if i == 0:  # pragma: no cover
+                        for lg in cl.source_language:
+                            if lg.lower() not in concept.cols:
+                                error('missing source language col %s' % lg.upper(), cl.id)
 
-                for lg in cl.source_language:  # pragma: no cover
-                    if not (concept.attributes.get(lg.lower()) or
-                            getattr(concept, lg.lower(), None) or
-                            (lg.lower() == 'english' and not concept.gloss)):
-                        error('missing source language translation %s' % lg, cl.id, i + 2)
-                for attr, values in ref_cols.items():
-                    val = getattr(concept, attr)
-                    if val:
-                        # check that there are not leading and trailing spaces
-                        # (while computationally expensive, this helps catch really
-                        # hard to find typos)
-                        if val != val.strip():
-                            error("leading or trailing spaces in value for %s: '%s'" %
-                                  (attr, val), cl.id, i + 2)
+                    for lg in cl.source_language:  # pragma: no cover
+                        if not (concept.attributes.get(lg.lower()) or
+                                getattr(concept, lg.lower(), None) or
+                                (lg.lower() == 'english' and not concept.gloss)):
+                            error('missing source language translation %s' % lg, cl.id, i + 2)
+                    for attr, values in ref_cols.items():
+                        val = getattr(concept, attr)
+                        if val:
+                            # check that there are not leading and trailing spaces
+                            # (while computationally expensive, this helps catch really
+                            # hard to find typos)
+                            if val != val.strip():
+                                error("leading or trailing spaces in value for %s: '%s'" %
+                                      (attr, val), cl.id, i + 2)
 
-                        if val not in values:  # pragma: no cover
-                            error('invalid value for %s: %s' % (attr, val), cl.id, i + 2)
+                            if val not in values:  # pragma: no cover
+                                error('invalid value for %s: %s' % (attr, val), cl.id, i + 2)
+            except TypeError as e:
+                broken_cls.append(cl.id)
+                error(str(e), cl.id)
 
         sameas = {}
         glosses = set()
@@ -372,6 +396,8 @@ class Concepticon(API):
                 deprecated[csid] = csids[0]
 
         for cl in self.conceptlists.values():
+            if cl.id in broken_cls:
+                continue
             for concept in cl.concepts.values():
                 if concept.concepticon_id in deprecated:  # pragma: no cover
                     error('deprecated concept set {0} linked for {1}'.format(
