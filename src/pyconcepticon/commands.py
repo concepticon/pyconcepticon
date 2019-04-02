@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 import operator
 import json
 from pathlib import Path
+import csv
 
 from tabulate import tabulate
 from clldutils.path import as_unicode, write_text
@@ -641,6 +642,46 @@ def recreate_linking_data(args):
     for l in api.vocabularies['COLUMN_TYPES'].values():
         if getattr(l, 'iso2', None):
             _write_linking_data(api, l, args)
+
+
+@command('shrink')
+def shrink(args):
+    """
+    Shrink a list using a provided column header as unique label.
+
+    Examples
+    --------
+    $ concepticon shrink Bowern-2011-204.tsv CATEGORY
+    """
+    with open(args.args[0], 'r') as f:
+        csv_list = list(csv.reader(f, delimiter='\t'))
+
+    header = [x.lower() for x in csv_list[0]]
+    head = args.args[1].lower()
+    rest = [h for h in header if h != head]
+
+    out_dict = {}
+
+    for line in csv_list[1:]:
+
+        tmp = dict(zip(header, line))
+
+        try:
+            for h in rest:
+                out_dict[tmp[head]][h] += [tmp[h]]
+        except KeyError:
+            out_dict[tmp[head]] = {}
+            for h in rest:
+                out_dict[tmp[head]][h] = [tmp[h]]
+
+    with open(args.args[0].replace('.tsv', '.shrink.tsv'), 'w') as f:
+        f.write('\t'.join([x.upper() for x in [head] + rest]) + '\n')
+        for k in sorted(out_dict):
+
+            f.write(k)
+            for h in rest:
+                f.write('\t' + ' / '.join(sorted(set(out_dict[k][h]))))
+            f.write('\n')
 
 
 def _write_linking_data(api, l, args):
