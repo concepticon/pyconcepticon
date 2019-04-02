@@ -638,7 +638,7 @@ def recreate_linking_data(args):
 
 
 @command("shrink")
-def shrink(args):
+def shrink(args):  # pragma: no cover
     """
     Shrink a list using a provided column header as unique label.
 
