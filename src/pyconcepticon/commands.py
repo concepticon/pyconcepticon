@@ -108,7 +108,9 @@ def notlinked(args):
     api = Concepticon(args.repos)
     i = 0
     for _, cl in sorted(api.conceptlists.items(), key=lambda p: p[0]):
-        for concept in sorted(cl.concepts.values(), key=lambda p: int(re.match('([0-9]+)', p.number).groups()[0])):
+        for concept in sorted(
+                cl.concepts.values(),
+                key=lambda p: int(re.match('([0-9]+)', p.number).groups()[0])):
             if not concept.concepticon_id:
                 candidates = [c for c in list(api.lookup([concept.label]))[0] if c[3] < 3]
                 if candidates:
@@ -482,48 +484,8 @@ def lookup(args):
         print(writer.read().decode('utf-8'))
 
 
-# TODO: To be deprecated in favour of 'check_new', be format-agnostic.
 @command()
 def check(args):
-    """
-    Identifies some issues with concept lists.
-    -- i.e. multiple words with the same CONCEPTICON_ID or missing definitions
-
-    concepticon check [CONCEPTLIST_ID]+
-    """
-    def _pprint(clist, error, _id, message):
-        print("\t".join([
-            clist.ljust(30), error.ljust(10), '%5s' % _id, message]))
-
-    def _get_mergers(o, api):
-        clashes = defaultdict(list)
-        for cid, c in o.concepts.items():
-            if c.concepticon_id:
-                clashes[c.concepticon_id].append(cid)
-
-        for c in sorted([c for c in clashes if len(clashes[c]) > 1]):
-            matches = [m for m in o.concepts if o.concepts[m].concepticon_id == c]
-            for i, m in enumerate(matches, 1):
-                message = '#%d %s = "%s"' % (
-                    i, api.conceptsets[c].gloss, getattr(o.concepts[m], 'english', ''))
-                _pprint(o.id, 'MERGE', c, message)
-
-    def _get_missing(o, _):
-        for m in o.concepts:
-            if o.concepts[m].concepticon_id == "":
-                _pprint(
-                    o.id, 'MISSING', o.concepts[m].number, '"%s"' % o.concepts[m].english)
-
-    api = Concepticon(args.repos)
-    for clist in api.conceptlists:
-        if (len(args.args) and clist in args.args) or not args.args:
-            clist = api.conceptlists[clist]
-            _get_missing(clist, api)
-            _get_mergers(clist, api)
-
-
-@command()
-def check_new(args):
     """
     Perform a number of sanity checks for a new concept list.
 
@@ -540,7 +502,7 @@ def check_new(args):
 
     Examples
     --------
-    $ concepticon checknew path_to_conceptlist.tsv
+    $ concepticon check path/to/conceptlist.tsv
     """
     list_to_check = read_dicts(args.args[0])
     api = Concepticon(args.repos)
@@ -556,8 +518,8 @@ def check_new(args):
         msg = "Gloss {0} in line {1} doesn't match ID {2}.".format(
             entry_to_check['CONCEPTICON_GLOSS'], str(index), entry_to_check['CONCEPTICON_ID'])
         try:
-            if (con_glosses[entry_to_check['CONCEPTICON_ID']] !=
-                    entry_to_check['CONCEPTICON_GLOSS']):
+            if (con_glosses[entry_to_check['CONCEPTICON_ID']]
+                    != entry_to_check['CONCEPTICON_GLOSS']):  # noqa: W503
                 print(msg)
         except KeyError:
             print(msg)
@@ -569,35 +531,33 @@ def check_new(args):
             if (entry_to_check['CONCEPTICON_GLOSS']
                     not in con_glosses.values()):
                 print(msg)
-        except KeyError:
+        except KeyError:  # pragma: no cover
             print(msg)
 
         # Test if proposed glosses (!GLOSS) have NULL ID:
         msg = "Proposed gloss {0} in line {1} shouldn't have a CONCEPTICON_ID.".format(
             entry_to_check['CONCEPTICON_GLOSS'], str(index))
         try:
-            if (entry_to_check['CONCEPTICON_GLOSS'].startswith('!') and
-                    entry_to_check['CONCEPTICON_ID']):
+            if (entry_to_check['CONCEPTICON_GLOSS'].startswith('!')
+                    and entry_to_check['CONCEPTICON_ID']):  # noqa: W503
                 print(msg)
-        except KeyError:
+        except KeyError:  # pragma: no cover
             print(msg)
 
     print("\nChecking for uniquness of glosses:")
     try:
         for double in _get_duplicates([dict(d)['CONCEPTICON_GLOSS'] for d in list_to_check]):
             print("Gloss " + double[1] + " doubled in line " + str(double[0] + 3) + ".")
-    except KeyError:
+    except KeyError:  # pragma: no cover
         pass
 
     print("\nChecking for uniqueness of 'NUMBER' and 'ID':")
     try:
         for double in _get_duplicates([dict(d)['ID'] for d in list_to_check]):
-            print("ID " + double[1] +
-                  " doubled in line " + str(double[0] + 2) + ".")
+            print("ID " + double[1] + " doubled in line " + str(double[0] + 2) + ".")
 
         for double in _get_duplicates([dict(d)['NUMBER'] for d in list_to_check]):
-            print("NUMBER " + double[1] +
-                  " doubled in line " + str(double[0] + 2) + ".")
+            print("NUMBER " + double[1] + " doubled in line " + str(double[0] + 2) + ".")
     except KeyError:
         pass
 

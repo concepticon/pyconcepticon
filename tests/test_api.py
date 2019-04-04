@@ -1,9 +1,9 @@
 import pytest
 
+from pyconcepticon.models import Concept, Conceptlist, Conceptset
+
 
 def test_Concept():
-    from pyconcepticon.api import Concept
-
     d = {f: '' for f in Concept.public_fields()}
     with pytest.raises(ValueError):
         Concept(**d)
@@ -25,8 +25,6 @@ def test_Concept():
 
 
 def test_Conceptlist(fixturedir, api):
-    from pyconcepticon.api import Conceptlist
-
     clist = Conceptlist.from_file(fixturedir.joinpath('conceptlist.tsv'), api=api)
     assert len(clist.concepts) == 1
 
@@ -50,8 +48,6 @@ def test_Conceptlist(fixturedir, api):
 
 
 def test_Conceptset(api):
-    from pyconcepticon.api import Conceptset
-
     assert len(api.conceptsets['1906'].concepts) > 0
 
     d = {a: '' for a in Conceptset.public_fields()}

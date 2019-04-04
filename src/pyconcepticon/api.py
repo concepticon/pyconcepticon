@@ -13,7 +13,12 @@ from clldutils.source import Source
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
-from pyconcepticon.models import *
+
+# The following symbols from models can explicitly be imported from pyconcepticon.api:
+from pyconcepticon.models import (  # noqa: F401
+    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset,
+    REF_PATTERN, compare_conceptlists,
+)
 
 
 class Concepticon(API):
@@ -92,7 +97,8 @@ class Concepticon(API):
         """
         refs = []
         with self.bibfile.open(encoding='utf8') as fp:
-            for key, entry in pybtex.database.parse_string(fp.read(), bib_format='bibtex').entries.items():
+            for key, entry in pybtex.database.parse_string(
+                    fp.read(), bib_format='bibtex').entries.items():
                 refs.append(Source.from_entry(key, entry))
         return to_dict(refs)
 
@@ -187,8 +193,8 @@ class Concepticon(API):
         good_matches = 0
         with UnicodeWriter(out) as writer:
             writer.writerow(
-                list(from_[0].keys()) +
-                ['CONCEPTICON_ID', 'CONCEPTICON_GLOSS', 'SIMILARITY'])
+                list(from_[0].keys())
+                + ['CONCEPTICON_ID', 'CONCEPTICON_GLOSS', 'SIMILARITY'])
             for i, item in enumerate(from_):
                 row = list(item.values())
                 matches, sim = cmap.get(i, ([], 10))
@@ -218,8 +224,8 @@ class Concepticon(API):
             writer.writerow(
                 ['#',
                  '{0}/{1}'.format(good_matches, len(from_)),
-                 '{0:.0f}%'.format(100 * good_matches / len(from_))] +
-                (len(from_[0]) - 1) * [''])
+                 '{0:.0f}%'.format(100 * good_matches / len(from_))]
+                + (len(from_[0]) - 1) * [''])
 
         if out is None:
             print(writer.read().decode('utf-8'))
@@ -346,16 +352,32 @@ class Concepticon(API):
         broken_cls = []
         for cl in self.conceptlists.values():
             try:
+                # Now check individual concepts:
                 for i, concept in enumerate(cl.concepts.values()):
+                    if not concept.id.startswith(cl.id):  # pragma: no cover
+                        error(
+                            'concept ID does not match concept list ID pattern %s' % concept.id,
+                            cl.id)
+
+                    if concept.concepticon_id:
+                        cs = self.conceptsets.get(concept.concepticon_id)
+                        if not cs:
+                            error('invalid conceptset ID %s' % concept.concepticon_id, cl.id)
+                        elif cs.gloss != concept.concepticon_gloss:
+                            error(
+                                'wrong conceptset GLOSS for ID {0}: {1} -> {2}'.format(
+                                    cs.id, concept.concepticon_gloss, cs.gloss),
+                                cl.id)
+
                     if i == 0:  # pragma: no cover
                         for lg in cl.source_language:
                             if lg.lower() not in concept.cols:
                                 error('missing source language col %s' % lg.upper(), cl.id)
 
                     for lg in cl.source_language:  # pragma: no cover
-                        if not (concept.attributes.get(lg.lower()) or
-                                getattr(concept, lg.lower(), None) or
-                                (lg.lower() == 'english' and not concept.gloss)):
+                        if not (concept.attributes.get(lg.lower())
+                                or getattr(concept, lg.lower(), None)
+                                or (lg.lower() == 'english' and not concept.gloss)):
                             error('missing source language translation %s' % lg, cl.id, i + 2)
                     for attr, values in ref_cols.items():
                         val = getattr(concept, attr)

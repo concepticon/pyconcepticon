@@ -28,12 +28,18 @@ def test_relink_data(tmprepos, mocker, capsys):
     assert tmprepos.joinpath('mappings').exists()
 
 
-def test_check_new(fixturedir, capsys, mocker, tmpdir):
-    from pyconcepticon.commands import check_new
+def test_check(fixturedir, capsys, mocker, tmpdir):
+    from pyconcepticon.commands import check
 
     test = tmpdir.join('test.tsv')
     copy(fixturedir.joinpath('conceptlist2.tsv'), str(test))
-    check_new(mocker.Mock(args=[str(test)], repos=fixturedir))
+    check(mocker.Mock(args=[str(test)], repos=fixturedir))
+    out, err = capsys.readouterr()
+    assert 'Gloss DUST' in out
+
+    t = test.read_text(encoding='utf8')
+    test.write_text(t.replace('1732', '111111'), encoding='utf8')
+    check(mocker.Mock(args=[str(test)], repos=fixturedir))
     out, err = capsys.readouterr()
     assert 'Gloss DUST' in out
 

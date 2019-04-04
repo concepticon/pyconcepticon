@@ -37,8 +37,9 @@ class Bag(DataObject):
 def valid_int(attr_name, value):
     try:
         int(value)
-    except ValueError as e:
+    except ValueError:
         raise ValueError('invalid integer {0}: {1}'.format(attr_name, value))
+
 
 def valid_conceptlist_id(instance, attribute, value):
     if not instance.local:
