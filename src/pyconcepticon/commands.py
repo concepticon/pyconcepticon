@@ -12,6 +12,7 @@ from clldutils.markup import Table
 from clldutils.misc import format_size
 from clldutils.path import as_unicode, write_text
 from tabulate import tabulate
+from csvw import Column
 
 from pyconcepticon.api import Concepticon, Conceptlist
 from pyconcepticon.util import rewrite, CS_ID, CS_GLOSS, SourcesCatalog, UnicodeWriter, read_dicts
@@ -191,6 +192,29 @@ def app(args):  # pragma: no cover
         "var Concepticon = {0};\n".format(json.dumps(data, indent=2)),
     )
     args.log.info("app data recreated")
+
+
+@command()
+def create_metadata(args):
+    api = Concepticon(args.repos)
+    for cl in api.conceptlists.values():
+        mdpath = cl.path.parent.joinpath(cl.path.name + '-metadata.json')
+        if not mdpath.exists():
+            cols_in_md = []
+            for col in cl.metadata.tableSchema.columns:
+                cnames = []  # all names or aliases csvw will recognize for this column
+                cnames.append(col.name)
+                if col.titles:
+                    c = col.titles.getfirst()
+                    cnames.append(c)
+                cols_in_md.extend(cnames)
+
+            for col in cl.cols_in_list:
+                if col not in cols_in_md:
+                    cl.metadata.tableSchema.columns.append(
+                        Column.fromvalue(dict(name=col, datatype='string')))
+
+            cl.tg.to_file(mdpath)
 
 
 @command()

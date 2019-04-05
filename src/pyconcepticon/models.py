@@ -9,6 +9,7 @@ import attr
 from clldutils.apilib import DataObject
 from clldutils.misc import lazyproperty
 from csvw.metadata import TableGroup, Link
+from csvw.dsv import reader
 
 from pyconcepticon.util import split, split_ids, read_dicts, to_dict
 
@@ -194,8 +195,8 @@ class Conceptlist(Bag):
     alias = attr.ib(converter=lambda s: [] if s is None else split(s))
     local = attr.ib(default=False)
 
-    @property
-    def metadata(self):
+    @lazyproperty
+    def tg(self):
         md = self.path.parent.joinpath(self.path.name + '-metadata.json')
         if not md.exists():
             if hasattr(self._api, 'repos'):
@@ -210,13 +211,21 @@ class Conceptlist(Bag):
         if isinstance(self._api, Path):
             tg._fname = self._api.parent.joinpath(self._api.name + '-metadata.json')
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))
-        return tg.tables[0]
+        return tg
+
+    @lazyproperty
+    def metadata(self):
+        return self.tg.tables[0]
 
     @property
     def path(self):
         if isinstance(self._api, Path):
             return self._api
         return self._api.data_path('conceptlists', self.id + '.tsv')
+
+    @lazyproperty
+    def cols_in_list(self):
+        return list(next(reader(self.path, dicts=True, delimiter='\t')).keys())
 
     @lazyproperty
     def attributes(self):

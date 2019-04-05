@@ -1,4 +1,5 @@
 from collections import namedtuple
+import os
 from pathlib import Path
 import shutil
 
@@ -26,6 +27,15 @@ def test_relink_data(tmprepos, mocker, capsys):
     out, _ = capsys.readouterr()
     assert 'checking' in out
     assert tmprepos.joinpath('mappings').exists()
+
+
+def test_create_metadata(tmprepos, mocker):
+    from pyconcepticon.commands import create_metadata
+
+    mdpath = tmprepos / 'concepticondata' / 'conceptlists' / 'Perrin-2010-110.tsv-metadata.json'
+    assert not mdpath.exists()
+    create_metadata(mocker.Mock(repos=tmprepos))
+    assert mdpath.exists()
 
 
 @pytest.mark.xfail  # no clue why this fails

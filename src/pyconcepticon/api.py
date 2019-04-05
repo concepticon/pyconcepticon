@@ -350,7 +350,36 @@ class Concepticon(API):
                     'conceptlist missing in conceptlists.tsv: {0}'.format(fname.name), '')
 
         broken_cls = []
+
         for cl in self.conceptlists.values():
+            #
+            # Check consistency between the csvw metadata and the column names in the list.
+            #
+            missing_in_md, missing_in_list = [], []
+            cols_in_md = []
+            for col in cl.metadata.tableSchema.columns:
+                cnames = []  # all names or aliases csvw will recognize for this column
+                if col.name in cols_in_md:
+                    error('Duplicate name ot title in table schema: {0}'.format(col.name), cl.id)
+                cnames.append(col.name)
+                if col.titles:
+                    c = col.titles.getfirst()
+                    if c in cols_in_md:
+                        error('Duplicate name ot title in table schema: {0}'.format(c), cl.id)
+                    cnames.append(c)
+                cols_in_md.extend(cnames)
+                if not any(name in cl.cols_in_list for name in cnames):
+                    # Neither name nor title of the column is in the actual list header.
+                    missing_in_list.append(col.name)
+            for col in cl.cols_in_list:
+                if col not in cols_in_md:
+                    missing_in_md.append(col)
+
+            for col in missing_in_list:
+                error('Column in metadata but missing in list: {0}'.format(col), cl.id)
+            for col in missing_in_md:
+                error('Column in list but missing in metadata: {0}'.format(col), cl.id)
+
             try:
                 # Now check individual concepts:
                 for i, concept in enumerate(cl.concepts.values()):
