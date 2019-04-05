@@ -15,11 +15,12 @@ from pyconcepticon.util import split, split_ids, read_dicts, to_dict
 
 __all__ = [
     'Languoid', 'Concept', 'Conceptlist', 'ConceptRelations', 'Conceptset', 'Metadata',
-    'REF_PATTERN', 'compare_conceptlists']
+    'REF_PATTERN', 'compare_conceptlists', 'MD_SUFFIX']
 
 CONCEPTLIST_ID_PATTERN = re.compile(
     '(?P<author>[A-Za-z]+)-(?P<year>[0-9]+)-(?P<items>[0-9]+)(?P<letter>[a-z]?)$')
 REF_PATTERN = re.compile(':ref:(?P<id>[a-zA-Z0-9-]+)')
+MD_SUFFIX = '-metadata.json'
 
 
 @attr.s
@@ -197,19 +198,19 @@ class Conceptlist(Bag):
 
     @lazyproperty
     def tg(self):
-        md = self.path.parent.joinpath(self.path.name + '-metadata.json')
+        md = self.path.parent.joinpath(self.path.name + MD_SUFFIX)
         if not md.exists():
             if hasattr(self._api, 'repos'):
                 ddir = self._api.path('concepticondata')
                 if self.local:
-                    md = ddir.joinpath('conceptlists', 'local-metadata.json')
+                    md = ddir.joinpath('conceptlists', 'local' + MD_SUFFIX)
                 if not md.exists():
-                    md = ddir.joinpath('conceptlists', 'default-metadata.json')
+                    md = ddir.joinpath('conceptlists', 'default' + MD_SUFFIX)
             else:
                 md = Path(__file__).parent / 'conceptlist-metadata.json'
         tg = TableGroup.from_file(md)
         if isinstance(self._api, Path):
-            tg._fname = self._api.parent.joinpath(self._api.name + '-metadata.json')
+            tg._fname = self._api.parent.joinpath(self._api.name + MD_SUFFIX)
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))
         return tg
 

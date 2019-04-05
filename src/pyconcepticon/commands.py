@@ -3,7 +3,7 @@ import json
 import operator
 import os
 import re
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 from pathlib import Path
 
 from cdstarcat.catalog import Catalog
@@ -11,11 +11,14 @@ from clldutils.clilib import ParserError, command
 from clldutils.markup import Table
 from clldutils.misc import format_size
 from clldutils.path import as_unicode, write_text
+from clldutils import jsonlib
 from tabulate import tabulate
 from csvw import Column
+from csvw.dsv import reader, UnicodeWriter
 
 from pyconcepticon.api import Concepticon, Conceptlist
 from pyconcepticon.util import rewrite, CS_ID, CS_GLOSS, SourcesCatalog, UnicodeWriter, read_dicts
+from pyconcepticon.models import MD_SUFFIX, CONCEPTLIST_ID_PATTERN
 
 
 class Linker(object):
@@ -192,6 +195,56 @@ def app(args):  # pragma: no cover
         "var Concepticon = {0};\n".format(json.dumps(data, indent=2)),
     )
     args.log.info("app data recreated")
+
+
+@command()
+def rename(args):  # pragma: no cover
+    api = Concepticon(args.repos)
+
+    from_, to_ = args.args
+    assert CONCEPTLIST_ID_PATTERN.match(to_)
+    cl = api.conceptlists[from_]
+
+    # write the adapted concept list to the new path:
+    with UnicodeWriter(cl.path.parent / cl.path.name.replace(from_, to_), delimiter='\t') as writer:
+        header = []
+        for i, row in enumerate(reader(cl.path, delimiter='\t')):
+            if i == 0:
+                header = row
+                writer.writerow(row)
+                header = {v: k for k, v in enumerate(header)}  # Map col name to row index
+            else:
+                oid = row[header['ID']]
+                assert oid.startswith(from_)
+                nid = oid.replace(from_, to_)
+                api.add_retirement('Concept', dict(id=oid, comment='renaming', replacement=nid))
+                row[header['ID']] = nid
+                writer.writerow(row)
+
+    # write adapted metadata to the new path:
+    fname = cl.path.name.replace(from_, to_) + MD_SUFFIX
+    md = jsonlib.load(cl.path.parent / (cl.path.name + MD_SUFFIX), object_pairs_hook=OrderedDict)
+    md['tables'][0]['url'] = fname
+    jsonlib.dump(md, cl.path.parent / fname, indent=4)
+
+    # remove obsolete concept list and metadata:
+    cl.path.unlink()
+    cl.path.parent.joinpath(cl.path.name + MD_SUFFIX).unlink()
+
+    # adapt conceptlists.tsv
+    rows = []
+    for row in reader(api.data_path('conceptlists.tsv'), delimiter='\t'):
+        rows.append([col.replace(from_, to_) if col else col for col in row])
+
+    with UnicodeWriter(api.data_path('conceptlists.tsv'), delimiter='\t') as writer:
+        writer.writerows(rows)
+
+    api.add_retirement('Conceptlist', dict(id=from_, comment='renaming', replacement=to_))
+
+    print("""Please run
+grep -r "{0}" concepticondata/ | grep -v retired.json
+
+to confirm the renaming was complete!""".format(from_))
 
 
 @command()

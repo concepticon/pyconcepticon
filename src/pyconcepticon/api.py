@@ -1,6 +1,6 @@
 import re
 from operator import itemgetter
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple, OrderedDict
 import warnings
 
 
@@ -17,7 +17,7 @@ from pyconcepticon.glosses import concept_map, concept_map2
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
     Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset,
-    REF_PATTERN, compare_conceptlists,
+    REF_PATTERN, compare_conceptlists, MD_SUFFIX,
 )
 
 
@@ -88,7 +88,17 @@ class Concepticon(API):
 
     @lazyproperty
     def retirements(self):
-        return jsonlib.load(self.data_path('retired.json'))
+        return jsonlib.load(self.data_path('retired.json'), object_pairs_hook=OrderedDict)
+
+    def add_retirement(self, type_, repl):
+        obj = OrderedDict()
+        for k in ['id', 'comment', 'replacement']:
+            obj[k] = repl[k]
+            assert obj[k]
+        if type_ not in self.retirements:
+            self.retirements[type_] = []
+        self.retirements[type_].append(obj)
+        jsonlib.dump(self.retirements, self.data_path('retired.json'), indent=2)
 
     @lazyproperty
     def bibliography(self):
@@ -135,7 +145,7 @@ class Concepticon(API):
 
     def _metadata(self, id_):
         values_path = self.data_path('concept_set_meta', id_ + '.tsv')
-        md_path = self.data_path('concept_set_meta', id_ + '.tsv-metadata.json')
+        md_path = self.data_path('concept_set_meta', id_ + '.tsv' + MD_SUFFIX)
         assert values_path.exists() and md_path.exists()
         md = jsonlib.load(md_path)
         return Metadata(
