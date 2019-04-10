@@ -552,14 +552,11 @@ def lookup(args):
 @command()
 def check(args):
     """
-<<<<<<< HEAD
-=======
-    Identifies some issues with concept lists.
-    -- i.e. multiple words with the same CONCEPTICON_ID or missing definitions
+    Identifies some issues with concept lists, that is multiple words with the same CONCEPTICON_ID
+    or missing definitions
 
     concepticon check [CONCEPTLIST_ID]+
     """
-
     def _pprint(clist, error, _id, message):
         print("\t".join([clist.ljust(30), error.ljust(10), "%5s" % _id, message]))
 
@@ -595,14 +592,12 @@ def check(args):
 @command()
 def check_new(args):
     """
->>>>>>> 7c8849e71fba5ed827cee356399b123b8097e727
     Perform a number of sanity checks for a new concept list.
 
     Notes
     -----
     Expects a well-formed concept list as input (i.e. tsv, 'ID',
-    'CONCEPTICON_ID', 'NUMBER', 'CONCEPTICON_GLOSS' columns, etc.) and tests
-    for a number of potential issues:
+    'CONCEPTICON_ID', 'NUMBER', 'CONCEPTICON_GLOSS' columns, etc.) and tests for a number of issues:
         - mismatch between glosses and Concepticon IDs
         - availability of glosses in Concepticon
         - if proposed glosses (starting with !) don't have IDs (they shouldn't!)
@@ -611,7 +606,7 @@ def check_new(args):
 
     Examples
     --------
-    $ concepticon check path/to/conceptlist.tsv
+    $ concepticon check_new path_to_conceptlist.tsv
     """
     list_to_check = read_dicts(args.args[0])
     api = Concepticon(args.repos)
