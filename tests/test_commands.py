@@ -37,21 +37,20 @@ def test_create_metadata(tmprepos, mocker):
     assert mdpath.exists()
 
 
-@pytest.mark.xfail  # no clue why this fails
 def test_check(fixturedir, capsys, mocker, tmpdir):
     from pyconcepticon.commands import check
 
-    test = tmpdir.join('test.tsv')
-    copy(fixturedir.joinpath('conceptlist2.tsv'), str(test))
-    check(mocker.Mock(args=[str(test)], repos=fixturedir))
+    test = tmpdir.join('Sun-1991-1004.tsv')
+    copy(fixturedir.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
+    check(mocker.Mock(args=str(test), repos=fixturedir))
     out, err = capsys.readouterr()
-    assert 'Gloss DUST' in out
+    assert '#1 FAST = "fast"' in out
 
     t = test.read_text(encoding='utf8')
-    test.write_text(t.replace('1732', '111111'), encoding='utf8')
-    check(mocker.Mock(args=[str(test)], repos=fixturedir))
+    test.write_text(t.replace('1631', '111111'), encoding='utf8')
+    check(mocker.Mock(args=str(test), repos=fixturedir))
     out, err = capsys.readouterr()
-    assert 'Gloss DUST' in out
+    assert '#1 FAST = "fast' in out
 
 
 def test_link(mocker, fixturedir, tmpdir, capsys):
