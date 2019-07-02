@@ -120,13 +120,31 @@ _INVERSE_RELATIONS = {'broader': 'narrower'}
 _INVERSE_RELATIONS.update({v: k for k, v in _INVERSE_RELATIONS.items()})
 
 
+@attr.s
 class ConceptRelations(dict):
     """
     Class handles relations between concepts.
     """
-    def __init__(self, path):
+    path = attr.ib(default=None)
+    raw = attr.ib(default=None)
+    vocab = attr.ib(default=dict(
+        broader='narrower',
+        similar='similar',
+        sameas='sameas',
+        resultof='resultsin',
+        produces='producedby',
+        usedfore='requires',
+        consistsof='',
+        classof='instanceof',
+        intransitiveof='transitiveof',
+        baseof='hasform',
+        haspart='',
+    ))
+
+    def __attrs_post_init__(self):
         rels = defaultdict(dict)
-        self.raw = list(read_dicts(path))
+        self.raw = list(read_dicts(self.path))
+
         for item in self.raw:
             rels[item['SOURCE']][item['TARGET']] = item['RELATION']
             rels[item['SOURCE_GLOSS']][item['TARGET_GLOSS']] = item['RELATION']
@@ -135,12 +153,13 @@ class ConceptRelations(dict):
                     _INVERSE_RELATIONS[item['RELATION']]
                 rels[item['TARGET_GLOSS']][item['SOURCE_GLOSS']] = \
                     _INVERSE_RELATIONS[item['RELATION']]
+
         dict.__init__(self, rels.items())
 
     def iter_related(self, concept, relation, max_degree_of_separation=2):
         """
         Search for concept relations of a given concept.
-
+    Z
         :param search_depth: maximal depth of search
         :param relation: the concept relation to be searched (currently only
             "broader" and "narrower".

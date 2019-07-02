@@ -342,6 +342,10 @@ class Concepticon(API):
         }
 
         for i, rel in enumerate(self.relations.raw):
+            if rel['RELATION'] not in self.relations.vocab.keys()\
+                    and rel['RELATION'] not in self.relations.vocab.values():
+                error('Invalid relation: {0}'.format(rel['RELATION']), 'conceptrelations', i + 2)
+
             for attr, type_ in [
                 ('SOURCE', 'concepticon_id'),
                 ('TARGET', 'concepticon_id'),
