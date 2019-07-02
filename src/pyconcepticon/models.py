@@ -159,7 +159,6 @@ class ConceptRelations(dict):
     def iter_related(self, concept, relation, max_degree_of_separation=2):
         """
         Search for concept relations of a given concept.
-    Z
         :param search_depth: maximal depth of search
         :param relation: the concept relation to be searched (currently only
             "broader" and "narrower".
