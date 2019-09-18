@@ -10,7 +10,7 @@ from cdstarcat.catalog import Catalog
 from clldutils.clilib import ParserError, command
 from clldutils.markup import Table
 from clldutils.misc import format_size
-from clldutils.path import as_unicode, write_text
+from clldutils.path import as_unicode
 from clldutils import jsonlib
 from tabulate import tabulate
 from csvw import Column
@@ -190,10 +190,9 @@ def app(args):  # pragma: no cover
                 data[key(g0, lang)].append(csspec)
                 data[key(g0.lower(), lang)].append(csspec)
     data["language"] = "en"
-    write_text(
-        args.api.appdatadir.joinpath("data.js"),
+    args.api.appdatadir.joinpath("data.js").write_text(
         "var Concepticon = {0};\n".format(json.dumps(data, indent=2)),
-    )
+        encoding='utf-8')
     args.log.info("app data recreated")
 
 
