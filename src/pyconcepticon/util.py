@@ -5,7 +5,7 @@ from operator import attrgetter
 from pathlib import Path
 
 from clldutils import jsonlib
-from clldutils import dsv
+from csvw import dsv
 
 import pyconcepticon
 
