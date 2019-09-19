@@ -14,7 +14,7 @@ from clldutils.path import as_unicode
 from clldutils import jsonlib
 from tabulate import tabulate
 from csvw import Column
-from csvw.dsv import reader, UnicodeWriter
+from csvw.dsv import reader
 
 from pyconcepticon.api import Concepticon, Conceptlist
 from pyconcepticon.util import rewrite, CS_ID, CS_GLOSS, SourcesCatalog, UnicodeWriter, read_dicts
