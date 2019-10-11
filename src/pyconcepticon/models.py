@@ -125,16 +125,16 @@ class ConceptRelations(dict):
     Class handles relations between concepts.
     """
     def __init__(self, path):
-        rels = defaultdict(dict)
+        rels = defaultdict(lambda : defaultdict(set))
         self.raw = list(read_dicts(path))
         for item in self.raw:
-            rels[item['SOURCE']][item['TARGET']] = item['RELATION']
-            rels[item['SOURCE_GLOSS']][item['TARGET_GLOSS']] = item['RELATION']
+            rels[item['SOURCE']][item['TARGET']].add(item['RELATION'])
+            rels[item['SOURCE_GLOSS']][item['TARGET_GLOSS']].add(item['RELATION'])
             if item['RELATION'] in _INVERSE_RELATIONS:
-                rels[item['TARGET']][item['SOURCE']] = \
-                    _INVERSE_RELATIONS[item['RELATION']]
-                rels[item['TARGET_GLOSS']][item['SOURCE_GLOSS']] = \
-                    _INVERSE_RELATIONS[item['RELATION']]
+                rels[item['TARGET']][item['SOURCE']].add(
+                    _INVERSE_RELATIONS[item['RELATION']])
+                rels[item['TARGET_GLOSS']][item['SOURCE_GLOSS']].add(
+                    _INVERSE_RELATIONS[item['RELATION']])
         dict.__init__(self, rels.items())
 
     def iter_related(self, concept, relation, max_degree_of_separation=2):
@@ -150,8 +150,8 @@ class ConceptRelations(dict):
         while queue:
             current_concept, depth = queue.popleft()
             depth += 1
-            for target, rel in self.get(current_concept, {}).items():
-                if rel == relation and depth <= max_degree_of_separation:
+            for target, rels in self.get(current_concept, {}).items():
+                if relation in rels and depth <= max_degree_of_separation:
                     queue.append((target, depth))
                     yield (target, depth)
 
