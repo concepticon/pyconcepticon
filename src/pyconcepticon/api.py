@@ -165,14 +165,12 @@ class Concepticon(API):
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'))
 
-
     @lazyproperty
     def multirelations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'), multiple=True)
-
 
     @lazyproperty
     def frequencies(self):

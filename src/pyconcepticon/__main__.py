@@ -14,8 +14,6 @@ The basic invocation looks like
 import sys
 from pathlib import Path
 import contextlib
-import logging
-
 from cldfcatalog import Config, Catalog
 from clldutils.clilib import register_subcommands, get_parser_and_subparsers, ParserError
 from clldutils.loglib import Logging

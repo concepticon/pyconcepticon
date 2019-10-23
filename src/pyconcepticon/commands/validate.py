@@ -6,6 +6,8 @@ Notes
 Concept lists have to be included in concepticondata/conceptlists in order
 to be considered.
 """
+
+
 def run(args):
     for cl in args.repos.conceptlists.values():
         items = list(cl.metadata)

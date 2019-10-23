@@ -7,12 +7,15 @@ Tests for issues with column names, file names, IDs, source
 availability, etc. Best run after you went through the whole
 procedure of adding a new list to Concepticon.
 """
+
+
 def register(parser):
     parser.add_argument(
         'clids',
         metavar='CONCEPTLIST_ID',
         help='Conceptlist IDs to consider for the test. If none are given, **all** will be tested.',
         nargs='*')
+
 
 def run(args):
     if args.repos.check(*args.clids):
