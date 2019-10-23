@@ -1,63 +1,110 @@
-from collections import namedtuple
-from pathlib import Path
 import shutil
+import shlex
+import logging
+import collections
 
 import pytest
 from clldutils.path import copy
 from clldutils.misc import nfilter
-from clldutils.clilib import ParserError
 
 from pyconcepticon.util import read_all
-from pyconcepticon import __main__
+from pyconcepticon.__main__ import main
 
 
-def test_validate(fixturedir, mocker, capsys):
-    from pyconcepticon.commands import validate
-    validate(mocker.MagicMock(repos=fixturedir))
+@pytest.fixture
+def _main(tmprepos):
+    def f(*args):
+        if len(args) == 1:
+            args = shlex.split(args[0])
+        main(args=['--repos', str(tmprepos)] + list(args), log=logging.getLogger('test'))
+    return f
+
+
+def test_help(_main, capsys):
+    _main()
+    out, err = capsys.readouterr()
+    assert 'make_app' in out
+
+
+def test_validate(capsys, _main):
+    _main('validate')
     out, err = capsys.readouterr()
     assert 'unspecified column' in out
 
 
-def test_relink_data(tmprepos, mocker, capsys):
-    from pyconcepticon.commands import recreate_linking_data
+def test_rename(capsys, _main, tmprepos):
+    _main('create_metadata')
+    _main('rename', 'Sun-1991-1004', 'Moon-2011-234')
+    assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
 
-    shutil.rmtree(str(tmprepos / 'mappings'))
-    recreate_linking_data(mocker.Mock(repos=tmprepos, log=mocker.Mock(info=print)))
+
+def test_upload_sources(_main, mocker, tmprepos):
+    tmprepos.joinpath('c').write_text('{}', encoding='utf8')
+    mocker.patch(
+        'pyconcepticon.commands.upload_sources.os',
+        mocker.Mock(environ=collections.defaultdict(lambda: 'x')))
+    _main('upload_sources', '--cdstar-catalog', str(tmprepos / 'c'))
+
+
+def test_notlinked(_main, capsys):
+    _main('notlinked')
     out, _ = capsys.readouterr()
-    assert 'checking' in out
+    assert 'Sun-1991-1004-275' in out
+
+
+def test_test(_main):
+    _main('test')
+
+
+def test_make_linkdata(tmprepos, _main, caplog):
+    shutil.rmtree(str(tmprepos / 'mappings'))
+    with caplog.at_level(logging.INFO):
+        _main('make_linkdata')
+    assert caplog.records
+    assert 'checking' in caplog.records[-1].message
     assert tmprepos.joinpath('mappings').exists()
 
 
-def test_create_metadata(tmprepos, mocker):
-    from pyconcepticon.commands import create_metadata
-
+def test_create_metadata(tmprepos, _main):
     mdpath = tmprepos / 'concepticondata' / 'conceptlists' / 'Perrin-2010-110.tsv-metadata.json'
     assert not mdpath.exists()
-    create_metadata(mocker.Mock(repos=tmprepos))
+    _main('create_metadata')
     assert mdpath.exists()
 
 
-def test_check(fixturedir, capsys, mocker, tmpdir):
-    from pyconcepticon.commands import check
-
+def test_check(fixturedir, capsys, mocker, tmpdir, _main):
     test = tmpdir.join('Sun-1991-1004.tsv')
     copy(fixturedir.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
-    check(mocker.Mock(args=str(test), repos=fixturedir))
+    _main('check', str(test))
     out, err = capsys.readouterr()
-    assert '#1 FAST = "fast"' in out
+    assert 'Sun-1991-1004-2 ' not in out
+    assert 'fast (adv.)' in out
 
     t = test.read_text(encoding='utf8')
-    test.write_text(t.replace('1631', '111111'), encoding='utf8')
-    check(mocker.Mock(args=str(test), repos=fixturedir))
+    test.write_text(t.replace('Sun-1991-1004-1', 'Sun-1991-1004-2'), encoding='utf8')
+    _main('check', str(test))
     out, err = capsys.readouterr()
-    assert '#1 FAST = "fast' in out
+    print(out)
+    assert 'Sun-1991-1004-2 ' in out
 
 
-def test_link(mocker, fixturedir, tmpdir, capsys):
-    from pyconcepticon.commands import link
+def test_shring(_main, capsys):
+    _main('shrink', 'Sun-1991-1004', 'CONCEPTICON_GLOSS')
+    out, _ = capsys.readouterr()
+    assert 500 < len(out.split('\n')) < 1000
 
-    with pytest.raises(ParserError):
-        link(mocker.Mock(args=['.'], repos=fixturedir))
+
+def test_mergers(_main):
+    _main('mergers', 'Sun-1991-1004')
+
+
+def test_map_concepts(_main):
+    _main('map_concepts', 'Sun-1991-1004')
+
+
+def test_link(fixturedir, tmpdir, capsys, _main):
+    with pytest.raises(SystemExit):
+        _main('link', '.')
 
     def nattr(p, attr):
         return len(nfilter([getattr(i, attr, None) for i in read_all(str(p))]))
@@ -65,65 +112,45 @@ def test_link(mocker, fixturedir, tmpdir, capsys):
     test = tmpdir.join('test.tsv')
     copy(fixturedir.joinpath('conceptlist.tsv'), str(test))
     assert nattr(test, 'CONCEPTICON_GLOSS') == 0
-    link(mocker.Mock(args=[str(test)], repos=fixturedir))
+    _main('link', str(test))
     assert nattr(test, 'CONCEPTICON_GLOSS') == 1
 
     copy(fixturedir.joinpath('conceptlist2.tsv'), str(test))
-    link(mocker.Mock(args=[str(test)], repos=fixturedir))
+    _main('link', str(test))
     out, err = capsys.readouterr()
     assert 'unknown CONCEPTICON_GLOSS' in out
     assert 'mismatch' in out
 
 
-def test_readme(tmpdir):
-    from pyconcepticon.commands import readme
-
-    readme(Path(str(tmpdir)), ['a', 'b'])
-    assert tmpdir.join('README.md').ensure()
-
-
-def test_stats(mocker, fixturedir):
-    from pyconcepticon.commands import stats
-
-    readme = mocker.Mock()
-    mocker.patch('pyconcepticon.commands.readme', readme)
-    stats(mocker.MagicMock(repos=fixturedir))
-    assert readme.call_count == 3
+def test_stats(_main, tmprepos):
+    assert not tmprepos.joinpath('concepticondata', 'README.md').exists()
+    _main('stats')
+    assert tmprepos.joinpath('concepticondata', 'README.md').exists()
 
 
-def test_attributes(mocker, capsys, fixturedir):
-    from pyconcepticon.commands import attributes
-
-    attributes(mocker.MagicMock(repos=fixturedir))
+def test_attributes(_main, capsys):
+    _main('attributes')
     out, err = capsys.readouterr()
     assert 'Occurrences' in out
 
 
-def test_union(capsys, fixturedir):
-    from pyconcepticon.commands import union
-    Args = namedtuple('Args', ['repos', 'args'])
-
-    union(Args(repos=fixturedir, args=['Perrin-2010-110', 'Sun-1991-1004']))
+def test_union(capsys, _main):
+    _main('union','Perrin-2010-110', 'Sun-1991-1004' )
     out, err = capsys.readouterr()
     assert 920 == len(out.split('\n'))
 
 
-def test_intersection(capsys, fixturedir):
-    from pyconcepticon.commands import intersection
-    Args = namedtuple('Args', ['repos', 'args'])
-
-    intersection(Args(repos=fixturedir, args=['Perrin-2010-110', 'Sun-1991-1004']))
+def test_intersection(capsys, _main):
+    _main('intersection','Perrin-2010-110', 'Sun-1991-1004' )
     out, err = capsys.readouterr()
     assert 69 == len(out.split('\n'))
 
 
-def test_lookup(capsys, mocker, fixturedir):
-    from pyconcepticon.commands import lookup
-
-    lookup(mocker.MagicMock(repos=fixturedir, full_search=True, args=['sky'], language='en'))
+def test_lookup(capsys, _main):
+    _main('lookup', '--full-search', '--language', 'en', 'sky')
     out, err = capsys.readouterr()
     assert '1732' in out
 
-    lookup(mocker.MagicMock(repos=fixturedir, args=['sky'], language='en'))
+    _main('lookup', '--language', 'en', 'sky')
     out, err = capsys.readouterr()
     assert '1732' in out

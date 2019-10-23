@@ -14,6 +14,7 @@ pip install pyconcepticon
 
 Note that `pyconcepticon` requires a clone or export of the [concepticon data repository](https://github.com/clld/concepticon-data).
 
+
 ## Usage
 
 To use `pyconcepticon` you must have a local copy of the Concepticon data, i.e. either
@@ -84,3 +85,13 @@ To create a user interface which allows you to explore concepticon concepts in t
 ```bash
 $ concepticon --repos=clld-concepticon-data-41d2bf0 app
 ```
+
+
+## Configuration
+
+Python API as well as CLI can lookup the location of the data from a
+[`cldfcatalog` config file](https://github.com/cldf/cldfcatalog/#configuration), under the key `concepticon`.
+
+Such a config file (and the repository clone) can be created automatically,
+by installing [`cldfbench`](https://pypi.org/cldfbench) and running
+`cldfbench config`.
