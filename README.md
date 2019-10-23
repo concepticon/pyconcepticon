@@ -1,5 +1,7 @@
 # pyconcepticon
 
+Tooling to access and curate [Concepticon data](https://github.com/concepticon/concepticon-data).
+
 [![Build Status](https://travis-ci.org/concepticon/pyconcepticon.svg?branch=master)](https://travis-ci.org/concepticon/pyconcepticon)
 [![codecov](https://codecov.io/gh/concepticon/pyconcepticon/branch/master/graph/badge.svg)](https://codecov.io/gh/concepticon/pyconcepticon)
 [![PyPI](https://img.shields.io/pypi/v/pyconcepticon.svg)](https://pypi.org/project/pyconcepticon)
@@ -8,7 +10,7 @@
 ## Installation
 
 `pyconcepticon` can be installed from [PyPI](https://pypi.python.org/pypi) running
-```bash
+```shell script
 pip install pyconcepticon
 ```
 
@@ -19,7 +21,7 @@ Note that `pyconcepticon` requires a clone or export of the [concepticon data re
 
 To use `pyconcepticon` you must have a local copy of the Concepticon data, i.e. either
 
-* the sources of a [released version](https://github.com/clld/concepticon-data/releases), as provided in the **Downloads** 
+* the sources of a [released version](https://github.com/concepticon/concepticon-data/releases), as provided in the **Downloads** 
   section of a release, or
 * a clone of this repository (or your personal fork of it).
 * or a released version of the data as archived on [ZENODO](https://doi.org/10.5281/zenodo.596412).
@@ -58,9 +60,58 @@ Concept(
 ### Command line interface
 
 Having installed `pyconcepticon`, you can also directly query concept lists via the terminal command 
-`concepticon`. For example, to learn about the intersection between two or more lists, you can type:
+`concepticon`. To learn about the functionality it provides run
+```shell script
+$ concepticon -h
+usage: concepticon [-h] [--log-level LOG_LEVEL] [--repos REPOS]
+                   [--repos-version REPOS_VERSION]
+                   COMMAND ...
 
-```shell
+optional arguments:
+  -h, --help            show this help message and exit
+  --log-level LOG_LEVEL
+                        log level [ERROR|WARN|INFO|DEBUG] (default: 20)
+  --repos REPOS         clone of concepticon/concepticon-data
+  --repos-version REPOS_VERSION
+                        version of repository data. Requires a git clone!
+                        (default: None)
+
+available commands:
+  Run "COMAMND -h" to get help for a specific command.
+
+  COMMAND
+    attributes          Print all columns in concept lists that contain
+                        surplus information.
+...
+```
+
+To learn about individual subcommands run `concepticon COMMAND -h`, e.g.
+```shell script
+$ concepticon intersection -h
+usage: concepticon intersection [-h] CONCEPTLIST [CONCEPTLIST ...]
+
+Compute the intersection of concepts for a number of concept lists.
+
+Notes
+-----
+This takes concept relations into account by searching for each concept
+set for broader concept sets in the depth of two edges on the network. If
+one concept A in one list is broader than concept B in another list, the
+concept A will be retained, and this will be marked in output. If two lists
+share the same broader concept, they will also be retained, but only, if
+none of the narrower concepts match. As a default we use a depth of 2 for
+the search.
+
+positional arguments:
+  CONCEPTLIST  Path to (or ID of) concept list in TSV format
+
+optional arguments:
+  -h, --help   show this help message and exit
+```
+
+An example of the intersection between two lists looks as follows:
+
+```shell script
 $ concepticon --repos=clld-concepticon-data-41d2bf0 intersection Swadesh-1955-100 Swadesh-1952-200
 ```
 
@@ -82,7 +133,7 @@ The number in squared brackets indicates the Concepticon concept set ID.
 You can use the same technique with the command "union", to obtain the union of two concept lists.
 
 To create a user interface which allows you to explore concepticon concepts in the browser, run
-```bash
+```shell script
 $ concepticon --repos=clld-concepticon-data-41d2bf0 app
 ```
 
