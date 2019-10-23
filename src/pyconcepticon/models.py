@@ -1,6 +1,6 @@
 import re
 import operator
-from collections import deque, defaultdict
+from collections import deque, defaultdict, Counter
 from pathlib import Path
 from operator import setitem
 from functools import partial
@@ -272,6 +272,18 @@ class Conceptlist(Bag):
             local=True)
         return cls(api=path, **attrs)
 
+    def stats(self):
+        """Return simple statistics for a given concept list"""
+        # @todo: refine for custom-concept lists
+        concepts = self.concepts.values()
+        mapped = [c for c in concepts if c.concepticon_id]
+        mapped_ratio = 0
+        if concepts:
+            mapped_ratio = int((len(mapped) / len(concepts)) * 100)
+        concepticon_ids = Counter([c.concepticon_id for c in concepts if c.concepticon_id])
+        mergers = [(k, v) for k, v in concepticon_ids.items() if v > 1]
+        return mapped, mapped_ratio, mergers
+
 
 def compare_conceptlists(api, *conceptlists, **kw):
     """
@@ -286,14 +298,17 @@ def compare_conceptlists(api, *conceptlists, **kw):
 
     # store all concepts along with their broader concepts
     for arg in conceptlists:
-        if arg not in api.conceptlists:
+        if isinstance(arg, Conceptlist):
+            clist = arg
+        elif arg not in api.conceptlists:
             clist = Conceptlist.from_file(arg)
         else:
             clist = api.conceptlists[arg]
+        clid = getattr(arg, 'id', arg)
         for c in clist.concepts.values():
             if c.concepticon_id:
                 commons[c.concepticon_id].add((
-                    arg, 0, c.concepticon_id, c.concepticon_gloss))
+                    clid, 0, c.concepticon_id, c.concepticon_gloss))
                 for rel, depth in [
                     ('broader', partial(operator.add, 0)),
                     ('narrower', partial(operator.sub, 0))
@@ -301,7 +316,7 @@ def compare_conceptlists(api, *conceptlists, **kw):
                     for cn, d in api.relations.iter_related(
                             c.concepticon_id, rel, max_degree_of_separation=search_depth):
                         commons[cn].add((
-                            arg, depth(d), c.concepticon_id, c.concepticon_gloss))
+                            clid, depth(d), c.concepticon_id, c.concepticon_gloss))
 
     # store proper concepts (the ones purely underived), as we need to check in
     # a second run, whether a narrower concept occurs (don't find another

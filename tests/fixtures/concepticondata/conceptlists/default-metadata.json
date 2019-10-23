@@ -42,6 +42,7 @@
                     },
                     {
                         "name": "ENGLISH",
+                        "titles": "alt_gloss",
                         "datatype": "string"
                     }
                 ],

@@ -13,41 +13,64 @@ The basic invocation looks like
 """
 import sys
 from pathlib import Path
+import contextlib
+import logging
 
-from clldutils.clilib import ArgumentParserWithLogging
+from cldfcatalog import Config, Catalog
+from clldutils.clilib import register_subcommands, get_parser_and_subparsers, ParserError
+from clldutils.loglib import Logging
 
-from pyconcepticon import commands
-assert commands
+from pyconcepticon import Concepticon
+import pyconcepticon.commands
 
 
-def main():  # pragma: no cover
-    parser = ArgumentParserWithLogging(__name__)
+def main(args=None, catch_all=False, parsed_args=None, log=None):
+    try:
+        repos = Config.from_file().get_clone('concepticon')
+    except KeyError:  # pragma: no cover
+        repos = Path('.')
+    parser, subparsers = get_parser_and_subparsers('concepticon')
     parser.add_argument(
         '--repos',
-        help="path to concepticon-data",
-        default=Path('.'))
+        help="clone of concepticon/concepticon-data",
+        default=repos,
+        type=Path)
     parser.add_argument(
-        '--skip_multimatch',
-        help="",
-        default=False,
-        action='store_true')
-    parser.add_argument(
-        '--full_search',
-        help="select between approximate search (default) and full search",
-        default=False,
-        action='store_true')
-    parser.add_argument(
-        '--output',
-        help="specify output file",
+        '--repos-version',
+        help="version of repository data. Requires a git clone!",
         default=None)
-    parser.add_argument(
-        '--similarity',
-        help="specify level of similarity for concept mapping",
-        default=5,
-        type=int)
-    parser.add_argument(
-        '--language',
-        help="specify your desired language for mapping",
-        default='en',
-        type=str)
-    sys.exit(parser.main())
+    register_subcommands(subparsers, pyconcepticon.commands)
+
+    args = parsed_args or parser.parse_args(args=args)
+
+    if not hasattr(args, "main"):
+        parser.print_help()
+        return 1
+
+    with contextlib.ExitStack() as stack:
+        if not log:
+            stack.enter_context(Logging(args.log, level=args.log_level))
+        else:
+            args.log = log
+        if args.repos_version:
+            # If a specific version of the data is to be used, we make
+            # use of a Catalog as context manager:
+            stack.enter_contet(Catalog(args.repos, tag=args.repos_version))
+        args.repos = Concepticon(args.repos)
+        args.log.info('concepticon/concepticon-data at {0}'.format(args.repos.repos))
+        try:
+            return args.main(args) or 0
+        except KeyboardInterrupt:  # pragma: no cover
+            return 0
+        except ParserError as e:
+            print(e)
+            return main([args._command, '-h'])
+        except Exception as e:
+            if catch_all:  # pragma: no cover
+                print(e)
+                return 1
+            raise
+
+
+if __name__ == '__main__':  # pragma: no cover
+    sys.exit(main() or 0)

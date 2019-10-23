@@ -10,6 +10,7 @@ from clldutils import jsonlib
 from clldutils.misc import lazyproperty
 from clldutils.apilib import API
 from clldutils.source import Source
+from cldfcatalog import Config
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
@@ -28,10 +29,12 @@ class Concepticon(API):
     Objects for the various types of data stored in concepticon-data can be accessed as
     dictionaries mapping object IDs to specific object type instances.
     """
-    def __init__(self, repos):
+    def __init__(self, repos=None):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
         """
+        if repos is None:
+            repos = Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
 
@@ -168,8 +171,7 @@ class Concepticon(API):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
-        return ConceptRelations(self.data_path('conceptrelations.tsv'),
-                multiple=True)
+        return ConceptRelations(self.data_path('conceptrelations.tsv'), multiple=True)
 
 
     @lazyproperty
@@ -269,6 +271,7 @@ class Concepticon(API):
     def check(self, *clids):
         errors = []
         assert self.retirements
+        print('testing {0} concept lists'.format(len(clids) if clids else len(self.conceptlists)))
 
         def _msg(type_, msg, name, line):  # pragma: no cover
             if line:
@@ -282,15 +285,19 @@ class Concepticon(API):
             warnings.warn(_msg('warning', msg, name, line), Warning)
 
         for i, d in enumerate(self.conceptlists_dicts, start=1):
-            try:
-                Conceptlist(api=self, **lowercase(d))
-            except ValueError as e:
-                error(str(e), 'conceptlists.tsv', i)
+            if (not clids) or d['ID'] in clids:
+                try:
+                    Conceptlist(api=self, **lowercase(d))
+                except ValueError as e:  # pragma: no cover
+                    error(str(e), 'conceptlists.tsv', i)
 
-        if errors:
+        def exit():
             for msg, name, line in errors:
                 print(_msg('error', msg, name, line))
             return not bool(errors)
+
+        if errors:
+            return exit()
 
         REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^\]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
         REF_WITHOUT_LINK_PATTERN = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
@@ -474,9 +481,7 @@ class Concepticon(API):
                     error('deprecated concept set {0} linked for {1}'.format(
                         concept.concepticon_id, concept.id), cl.id)
 
-        for msg, name, line in errors:
-            print(_msg('error', msg, name, line))
-        return not bool(errors)
+        return exit()
 
     def _set_operation(self, type_, *clids, **kw):
         assert type_ in ['union', 'intersection']

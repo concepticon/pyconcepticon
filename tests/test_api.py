@@ -103,6 +103,10 @@ def test_ConceptRelations(fixturedir):
     assert list(rels.iter_related('1212', 'hasform'))[0][0] == '2310'
 
 
+def test_MultiRelations(api):
+    assert api.multirelations
+
+
 def test_superseded_concepts(api):
     # 282 POLE has a replacement to 281 POST
     assert api.conceptsets['283'].superseded
