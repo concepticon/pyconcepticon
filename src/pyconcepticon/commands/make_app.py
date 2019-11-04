@@ -6,13 +6,18 @@ Notes
 Data are by default dumped into a structured JSON file in html/data.js.
 """
 import json
+import argparse
 import collections
 
 from pyconcepticon import Concepticon
 
 
+def register(parser):
+    parser.add_argument('--recreate', default=True, help=argparse.SUPPRESS)
+
+
 @Concepticon.app_wrapper
-def run(args):  # pragma: no cover
+def run(args):
     data = collections.defaultdict(list)
 
     def key(g, l):

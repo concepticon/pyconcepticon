@@ -32,6 +32,12 @@ def test_validate(capsys, _main):
     assert 'unspecified column' in out
 
 
+def test_make_app(_main):
+    _main('make_linkdata')
+    _main('make_app')
+    _main('make_app')
+
+
 def test_rename(capsys, _main, tmprepos):
     _main('create_metadata')
     _main('rename', 'Sun-1991-1004', 'Moon-2011-234')

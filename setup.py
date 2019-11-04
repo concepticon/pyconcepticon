@@ -27,7 +27,7 @@ setup(
         'attrs>=18.1.0',
         'pybtex>=0.22.2',
         'csvw>=1.4.5',
-        'clldutils>=3.2',
+        'clldutils>=3.2.1',
         'cldfcatalog>=1.3',
         'cdstarcat',
         'termcolor',

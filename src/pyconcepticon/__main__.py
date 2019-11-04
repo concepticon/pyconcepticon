@@ -46,11 +46,11 @@ def main(args=None, catch_all=False, parsed_args=None, log=None):
         return 1
 
     with contextlib.ExitStack() as stack:
-        if not log:
+        if not log:  # pragma: no cover
             stack.enter_context(Logging(args.log, level=args.log_level))
         else:
             args.log = log
-        if args.repos_version:
+        if args.repos_version:  # pragma: no cover
             # If a specific version of the data is to be used, we make
             # use of a Catalog as context manager:
             stack.enter_contet(Catalog(args.repos, tag=args.repos_version))
@@ -63,8 +63,8 @@ def main(args=None, catch_all=False, parsed_args=None, log=None):
         except ParserError as e:
             print(e)
             return main([args._command, '-h'])
-        except Exception as e:
-            if catch_all:  # pragma: no cover
+        except Exception as e:  # pragma: no cover
+            if catch_all:
                 print(e)
                 return 1
             raise

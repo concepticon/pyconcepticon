@@ -19,4 +19,5 @@ def api():
 @pytest.fixture
 def tmprepos(tmpdir):
     shutil.copytree(str(Path(__file__).parent / 'fixtures'), str(tmpdir.join('repos')))
+    tmpdir.join('repos', 'app').mkdir()
     return Path(str(tmpdir.join('repos')))
