@@ -30,6 +30,7 @@ setup(
         'clldutils>=3.2.1',
         'cldfcatalog>=1.3',
         'cdstarcat',
+        'nameparser',
         'termcolor',
         'tabulate',
     ],
