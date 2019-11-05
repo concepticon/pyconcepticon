@@ -26,6 +26,12 @@ def test_help(_main, capsys):
     assert 'make_app' in out
 
 
+def test_citation(capsys, _main):
+    _main('citation --version 2.0')
+    out, _ = capsys.readouterr()
+    assert '2.0' in out
+
+
 def test_validate(capsys, _main):
     _main('validate')
     out, err = capsys.readouterr()
