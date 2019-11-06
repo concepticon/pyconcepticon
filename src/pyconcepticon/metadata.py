@@ -1,3 +1,5 @@
+import urllib.parse
+
 import attr
 
 
@@ -32,15 +34,26 @@ class Metadata:
     publisher = attr.ib(default=Publisher(), validator=attr.validators.instance_of(Publisher))
     license = attr.ib(default=License(), validator=attr.validators.instance_of(License))
     url = attr.ib(default='https://concepticon.clld.org')
+    title = attr.ib(default="Concepticon")
+    description = attr.ib(default="A Resource for the Linking of Concept Lists")
 
     @classmethod
     def from_jsonld(cls, d):
         kw = {}
-        if d.get('dcat:accessURL'):
-            kw['url'] = d['dcat:accessURL']
+        for k, v in [
+            ('dcat:accessURL', 'url'),
+            ('dc:title', 'title'),
+            ('dc:description', 'description'),
+        ]:
+            if d.get(k):
+                kw[v] = d[k]
         for ldkey, cls_ in [('dc:publisher', Publisher), ('dc:license', License)]:
             ckw = {
                 f.name: d.get(ldkey, {}).get(f.metadata.get('ldkey', f.name))
                 for f in attr.fields(cls_)}
             kw[cls_.__name__.lower()] = cls_(**{k: v for k, v in ckw.items() if v})
         return cls(**kw)
+
+    @property
+    def domain(self):
+        return urllib.parse.urlparse(self.url).netloc

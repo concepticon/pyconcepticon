@@ -28,6 +28,7 @@ def test_dataset_metadata(api):
     assert api.dataset_metadata.publisher.place == 'example'
     assert api.dataset_metadata.license.url == 'http://example.org'
     assert api.dataset_metadata.license.icon == 'cc-by.png'
+    assert api.dataset_metadata.domain == 'example.org'
 
 
 def test_Conceptlist(fixturedir, api):

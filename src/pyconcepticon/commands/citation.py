@@ -23,7 +23,8 @@ def run(args):
             name = HumanName(e.name)
             editors.append('{0.last}, {0.first} {0.middle}'.format(name).strip())
     editors = ' & '.join(editors)
-    print("{0} (eds.) {1.year}. Concepticon {1.version}. "
-          "A Resource for the Linking of Concept Lists. "
-          "Jena: Max Planck Institute for the Science of Human History. "
-          "Available online at https://concepticon.clld.org".format(editors, args))
+    print(
+        "{0} (eds.) {1.year}. {2.title} {1.version}. {2.description}. "
+        "{2.publisher.place}: {2.publisher.name}. Available online at {2.url}".format(
+            editors, args, args.repos.dataset_metadata,
+        ))

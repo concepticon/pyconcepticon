@@ -18,7 +18,7 @@ from pyconcepticon import metadata
 
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
-    Languoid, Metadata, Conceptlist, ConceptRelations, Conceptset,
+    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset,
     REF_PATTERN, compare_conceptlists, MD_SUFFIX,
 )
 
