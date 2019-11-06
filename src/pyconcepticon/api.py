@@ -14,10 +14,11 @@ from cldfcatalog import Config
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
+from pyconcepticon import metadata
 
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
-    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset,
+    Languoid, Metadata, Conceptlist, ConceptRelations, Conceptset,
     REF_PATTERN, compare_conceptlists, MD_SUFFIX,
 )
 
@@ -37,6 +38,11 @@ class Concepticon(API):
             repos = Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
+
+    @lazyproperty
+    def dataset_metadata(self):
+        mdp = self.repos / 'metadata.json'
+        return metadata.Metadata.from_jsonld(jsonlib.load(mdp) if mdp.exists() else {})
 
     def data_path(self, *comps):
         """

@@ -24,6 +24,12 @@ def test_Concept():
     Concept(**d)
 
 
+def test_dataset_metadata(api):
+    assert api.dataset_metadata.publisher.place == 'example'
+    assert api.dataset_metadata.license.url == 'http://example.org'
+    assert api.dataset_metadata.license.icon == 'cc-by.png'
+
+
 def test_Conceptlist(fixturedir, api):
     clist = Conceptlist.from_file(fixturedir.joinpath('conceptlist.tsv'), api=api)
     assert len(clist.concepts) == 1
