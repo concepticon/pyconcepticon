@@ -103,9 +103,9 @@ def test_Concepticon(api):
     assert len(api.conceptsets) == 3175
 
 
-def test_ConceptRelations(fixturedir):
+def test_ConceptRelations(api):
     from pyconcepticon.api import ConceptRelations
-    rels = ConceptRelations(fixturedir / 'concepticondata' / 'conceptrelations.tsv')
+    rels = ConceptRelations(api.repos / 'concepticondata' / 'conceptrelations.tsv')
     assert list(rels.iter_related('1212', 'narrower'))[0][0] in ['1130', '1131']
     assert list(rels.iter_related('1212', 'hasform'))[0][0] == '2310'
 
