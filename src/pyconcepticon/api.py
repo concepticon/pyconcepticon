@@ -314,10 +314,13 @@ class Concepticon(API):
             cnames_tsv = set(list(meta.values.values())[0])
             if cnames_tsv - cnames_schema:  # pragma: no cover
                 error('column names in {0} but not in json-specs'.format(meta.id), 'name')
-            for i, value in enumerate(meta.values.values()):
+            for i, (key, value) in enumerate(meta.values.items()):
                 if set(value.keys()) != cnames_schema:  # pragma: no cover
                     error('meta data {0} contains irregular number of columns in line {1}'
                           .format(meta.id, i + 2), 'name')
+                if key not in self.conceptsets:
+                    error('meta data {0} references invalid CONCEPTICON_ID {2} in line {1}'
+                          .format(meta.id, i + 2, key), 'name')
             for ref in split(meta.meta.get('dc:references') or ''):
                 if ref not in refs_in_bib:
                     error('cited bibtex record not in bib: {0}'.format(ref), 'name')
