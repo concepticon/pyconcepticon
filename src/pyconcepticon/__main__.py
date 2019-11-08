@@ -19,8 +19,8 @@ from clldutils.loglib import Logging
 try:
     import cldfcatalog
     NO_CAT = None
-except ImportError as NO_CAT:
-    pass
+except ImportError as e:
+    NO_CAT = e
 
 from pyconcepticon import Concepticon
 import pyconcepticon.commands
