@@ -10,7 +10,10 @@ from clldutils import jsonlib
 from clldutils.misc import lazyproperty
 from clldutils.apilib import API
 from clldutils.source import Source
-from cldfcatalog import Config
+try:
+    import cldfcatalog
+except ImportError:  # pragma: no cover
+    cldfcatalog = None
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
@@ -34,8 +37,8 @@ class Concepticon(API):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
         """
-        if repos is None:
-            repos = Config.from_file().get_clone('concepticon')
+        if (repos is None) and cldfcatalog:
+            repos = cldfcatalog.Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
 

@@ -14,19 +14,26 @@ The basic invocation looks like
 import sys
 from pathlib import Path
 import contextlib
-from cldfcatalog import Config, Catalog
 from clldutils.clilib import register_subcommands, get_parser_and_subparsers, ParserError
 from clldutils.loglib import Logging
+try:
+    import cldfcatalog
+    NO_CAT = None
+except ImportError as NO_CAT:
+    pass
 
 from pyconcepticon import Concepticon
 import pyconcepticon.commands
 
 
 def main(args=None, catch_all=False, parsed_args=None, log=None):
-    try:
-        repos = Config.from_file().get_clone('concepticon')
-    except KeyError:  # pragma: no cover
-        repos = Path('.')
+    repos = None
+    if not NO_CAT:
+        try:
+            repos = cldfcatalog.Config.from_file().get_clone('concepticon')
+        except KeyError:  # pragma: no cover
+            pass
+    repos = repos or Path('.')
     parser, subparsers = get_parser_and_subparsers('concepticon')
     parser.add_argument(
         '--repos',
@@ -53,7 +60,10 @@ def main(args=None, catch_all=False, parsed_args=None, log=None):
         if args.repos_version:  # pragma: no cover
             # If a specific version of the data is to be used, we make
             # use of a Catalog as context manager:
-            stack.enter_context(Catalog(args.repos, tag=args.repos_version))
+            if NO_CAT:
+                print(NO_CAT)
+                return 1
+            stack.enter_context(cldfcatalog.Catalog(args.repos, tag=args.repos_version))
         args.repos = Concepticon(args.repos)
         args.log.info('concepticon/concepticon-data at {0}'.format(args.repos.repos))
         try:
