@@ -9,6 +9,7 @@ this cli, most of them require common configuration.
 The basic invocation looks like
 
     concepticon [OPTIONS] <command> [args]
+
 """
 import sys
 from pathlib import Path
