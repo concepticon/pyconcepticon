@@ -41,11 +41,11 @@ def test_parse_gloss_2():
     assert g1.similarity(g2) == 4
 
     g = Gloss.from_string('la montagne', language='fr')
-    assert g.pos == ''
+    assert g.pos == 'noun'
 
     g1 = Gloss.from_string('montagne', language='fr')
     g2 = Gloss.from_string('la montagne', language='fr')
-    assert g1.similarity(g2) == 6
+    assert g1.similarity(g2) == 4
 
     # error on invalid gloss
     with pytest.raises(ValueError):
