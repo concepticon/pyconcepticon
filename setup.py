@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyconcepticon',
-    version='2.3.0.dev0',
+    version='2.5.2.dev0',
     description='programmatic access to concepticon-data',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -27,9 +27,10 @@ setup(
         'attrs>=18.1.0',
         'pybtex>=0.22.2',
         'csvw>=1.4.5',
-        'clldutils>=3.2',
+        'clldutils>=3.2.1',
         'cldfcatalog>=1.3',
         'cdstarcat',
+        'nameparser',
         'termcolor',
         'tabulate',
     ],

@@ -10,10 +10,14 @@ from clldutils import jsonlib
 from clldutils.misc import lazyproperty
 from clldutils.apilib import API
 from clldutils.source import Source
-from cldfcatalog import Config
+try:
+    import cldfcatalog
+except ImportError:  # pragma: no cover
+    cldfcatalog = None
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
+from pyconcepticon import metadata
 
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
@@ -33,10 +37,15 @@ class Concepticon(API):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
         """
-        if repos is None:
-            repos = Config.from_file().get_clone('concepticon')
+        if (repos is None) and cldfcatalog:
+            repos = cldfcatalog.Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
+
+    @lazyproperty
+    def dataset_metadata(self):
+        mdp = self.repos / 'metadata.json'
+        return metadata.Metadata.from_jsonld(jsonlib.load(mdp) if mdp.exists() else {})
 
     def data_path(self, *comps):
         """
@@ -165,14 +174,12 @@ class Concepticon(API):
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'))
 
-
     @lazyproperty
     def multirelations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'), multiple=True)
-
 
     @lazyproperty
     def frequencies(self):
@@ -314,10 +321,13 @@ class Concepticon(API):
             cnames_tsv = set(list(meta.values.values())[0])
             if cnames_tsv - cnames_schema:  # pragma: no cover
                 error('column names in {0} but not in json-specs'.format(meta.id), 'name')
-            for i, value in enumerate(meta.values.values()):
+            for i, (key, value) in enumerate(meta.values.items()):
                 if set(value.keys()) != cnames_schema:  # pragma: no cover
                     error('meta data {0} contains irregular number of columns in line {1}'
                           .format(meta.id, i + 2), 'name')
+                if key not in self.conceptsets:
+                    error('meta data {0} references invalid CONCEPTICON_ID {2} in line {1}'
+                          .format(meta.id, i + 2, key), 'name')
             for ref in split(meta.meta.get('dc:references') or ''):
                 if ref not in refs_in_bib:
                     error('cited bibtex record not in bib: {0}'.format(ref), 'name')

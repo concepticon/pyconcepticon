@@ -56,8 +56,8 @@ def readme_concepticondata(api, cls):
             G[concept.label].append((concept.concepticon_id, concept.concepticon_gloss, cl.id))
             labels.update([concept.label])
 
-    txt = [
-        """
+
+    txt = ["""
 # Concepticon Statistics
 * concept sets (used): {0}
 * concept lists: {1}
@@ -68,15 +68,14 @@ def readme_concepticondata(api, cls):
 * Ø unique concept labels per concept set: {6:.2f}
 
 """.format(
-            len(D),
-            len(cls),
-            sum(list(labels.values())),
-            len(labels),
-            sum(list(labels.values())) / len(cls),
-            sum([len(v) for k, v in D.items()]) / len(D),
-            sum([len(set([label for _, label in v])) for k, v in D.items()]) / len(D),
-            )
-    ]
+        len(D),
+        len(cls),
+        sum(list(labels.values())),
+        len(labels),
+        sum(list(labels.values())) / len(cls),
+        sum([len(v) for k, v in D.items()]) / len(D),
+        sum([len(set([label for _, label in v])) for k, v in D.items()]) / len(D),
+    )]
 
     for attr, key in [
         ("Diverse", lambda x: (len(set([label for _, label in x[1]])), x[0] or "")),
@@ -84,17 +83,15 @@ def readme_concepticondata(api, cls):
     ]:
         table = Table("No.", "concept set", "distinct labels", "concept lists", "examples")
         for i, (k, v) in enumerate(sorted(D.items(), key=key, reverse=True)[:20]):
-            table.append(
-                [
-                    i + 1,
-                    k,
-                    len(set([label for _, label in v])),
-                    len(set([clist for clist, _ in v])),
-                    ", ".join(
-                        sorted(set(["«{0}»".format(label.replace("*", "`*`")) for _, label in v]))
-                    ),
-                    ]
-            )
+            table.append([
+                i + 1,
+                k,
+                len(set([label for _, label in v])),
+                len(set([clist for clist, _ in v])),
+                ", ".join(
+                    sorted(set(["«{0}»".format(label.replace("*", "`*`")) for _, label in v]))
+                ),
+            ])
         txt.append("## Twenty Most {0} Concept Sets\n\n{1}\n".format(attr, table.render()))
 
     readme(api.data_path(), txt)

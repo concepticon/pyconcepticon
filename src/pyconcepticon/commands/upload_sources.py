@@ -32,7 +32,7 @@ def run(args):
             cdstar_url=os.environ["CDSTAR_URL"],
             cdstar_user=os.environ["CDSTAR_USER"],
             cdstar_pwd=os.environ["CDSTAR_PWD"],
-        ) as cat:
+        ) as cat:  # pragma: no cover
             for fname in sorted(
                     args.repos.data_path("sources").glob("*.pdf"), key=lambda f: f.stem):
                 clid = fname.stem

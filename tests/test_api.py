@@ -24,6 +24,13 @@ def test_Concept():
     Concept(**d)
 
 
+def test_dataset_metadata(api):
+    assert api.dataset_metadata.publisher.place == 'example'
+    assert api.dataset_metadata.license.url == 'http://example.org'
+    assert api.dataset_metadata.license.icon == 'cc-by.png'
+    assert api.dataset_metadata.domain == 'example.org'
+
+
 def test_Conceptlist(fixturedir, api):
     clist = Conceptlist.from_file(fixturedir.joinpath('conceptlist.tsv'), api=api)
     assert len(clist.concepts) == 1
@@ -96,9 +103,9 @@ def test_Concepticon(api):
     assert len(api.conceptsets) == 3175
 
 
-def test_ConceptRelations(fixturedir):
+def test_ConceptRelations(api):
     from pyconcepticon.api import ConceptRelations
-    rels = ConceptRelations(fixturedir / 'concepticondata' / 'conceptrelations.tsv')
+    rels = ConceptRelations(api.repos / 'concepticondata' / 'conceptrelations.tsv')
     assert list(rels.iter_related('1212', 'narrower'))[0][0] in ['1130', '1131']
     assert list(rels.iter_related('1212', 'hasform'))[0][0] == '2310'
 

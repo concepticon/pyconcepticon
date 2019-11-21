@@ -26,10 +26,33 @@ def test_help(_main, capsys):
     assert 'make_app' in out
 
 
+<<<<<<< HEAD
+=======
+def test_citation(capsys, _main):
+    _main('citation --version 2.0')
+    out, _ = capsys.readouterr()
+    assert '2.0' in out
+
+
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 def test_validate(capsys, _main):
     _main('validate')
     out, err = capsys.readouterr()
     assert 'unspecified column' in out
+
+
+<<<<<<< HEAD
+def test_rename(capsys, _main, tmprepos):
+    _main('create_metadata')
+    _main('rename', 'Sun-1991-1004', 'Moon-2011-234')
+    assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
+
+
+=======
+def test_make_app(_main):
+    _main('make_linkdata')
+    _main('make_app')
+    _main('make_app')
 
 
 def test_rename(capsys, _main, tmprepos):
@@ -38,6 +61,7 @@ def test_rename(capsys, _main, tmprepos):
     assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
 
 
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 def test_upload_sources(_main, mocker, tmprepos):
     tmprepos.joinpath('c').write_text('{}', encoding='utf8')
     mocker.patch(
@@ -51,10 +75,27 @@ def test_notlinked(_main, capsys):
     out, _ = capsys.readouterr()
     assert 'Sun-1991-1004-275' in out
 
+<<<<<<< HEAD
+
+def test_test(_main):
+    _main('test')
+=======
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 
 def test_test(_main):
     _main('test')
 
+<<<<<<< HEAD
+def test_make_linkdata(tmprepos, _main, caplog):
+    shutil.rmtree(str(tmprepos / 'mappings'))
+    with caplog.at_level(logging.INFO):
+        _main('make_linkdata')
+    assert caplog.records
+    assert 'checking' in caplog.records[-1].message
+    assert tmprepos.joinpath('mappings').exists()
+
+
+=======
 
 def test_make_linkdata(tmprepos, _main, caplog):
     shutil.rmtree(str(tmprepos / 'mappings'))
@@ -65,6 +106,7 @@ def test_make_linkdata(tmprepos, _main, caplog):
     assert tmprepos.joinpath('mappings').exists()
 
 
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 def test_create_metadata(tmprepos, _main):
     mdpath = tmprepos / 'concepticondata' / 'conceptlists' / 'Perrin-2010-110.tsv-metadata.json'
     assert not mdpath.exists()
@@ -72,9 +114,15 @@ def test_create_metadata(tmprepos, _main):
     assert mdpath.exists()
 
 
+<<<<<<< HEAD
 def test_check(fixturedir, capsys, mocker, tmpdir, _main):
     test = tmpdir.join('Sun-1991-1004.tsv')
     copy(fixturedir.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
+=======
+def test_check(api, capsys, mocker, tmpdir, _main):
+    test = tmpdir.join('Sun-1991-1004.tsv')
+    copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
     _main('check', str(test))
     out, err = capsys.readouterr()
     assert 'Sun-1991-1004-2 ' not in out
@@ -92,8 +140,19 @@ def test_shring(_main, capsys):
     _main('shrink', 'Sun-1991-1004', 'CONCEPTICON_GLOSS')
     out, _ = capsys.readouterr()
     assert 500 < len(out.split('\n')) < 1000
+<<<<<<< HEAD
+=======
 
 
+def test_mergers(_main):
+    _main('mergers', 'Sun-1991-1004')
+
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
+
+def test_map_concepts(_main):
+    _main('map_concepts', 'Sun-1991-1004')
+
+<<<<<<< HEAD
 def test_mergers(_main):
     _main('mergers', 'Sun-1991-1004')
 
@@ -102,6 +161,9 @@ def test_map_concepts(_main):
     _main('map_concepts', 'Sun-1991-1004')
 
 
+=======
+
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 def test_link(fixturedir, tmpdir, capsys, _main):
     with pytest.raises(SystemExit):
         _main('link', '.')
@@ -126,8 +188,13 @@ def test_stats(_main, tmprepos):
     assert not tmprepos.joinpath('concepticondata', 'README.md').exists()
     _main('stats')
     assert tmprepos.joinpath('concepticondata', 'README.md').exists()
+<<<<<<< HEAD
 
 
+=======
+
+
+>>>>>>> a6e4160bac953b3f9e655376d4cfad8ee7401ca4
 def test_attributes(_main, capsys):
     _main('attributes')
     out, err = capsys.readouterr()

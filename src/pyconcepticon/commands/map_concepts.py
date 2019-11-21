@@ -7,6 +7,10 @@ In order for the automatic mapping to work, the new list has to be
 well-formed, i.e. in line with the requirments of Concepticon
 (GLOSS/ENGLISH column, see also CONTRIBUTING.md).
 """
+import platform
+
+from clldutils.clilib import ParserError
+
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist, _get_conceptlist, add_search
 
 
@@ -30,6 +34,13 @@ def register(parser):
 
 
 def run(args):
+    # Note: Due to https://github.com/concepticon/pyconcepticon/issues/10 we require specification
+    # of an output file on Windows:
+    if platform.system() == 'Windows' and not args.output:  # pragma: no cover
+        raise ParserError(
+            'On Windows you must specify an output file since printing to the terminal may '
+            'not work')
+
     args.repos.map(
         get_conceptlist(args, path_only=True),
         otherlist=_get_conceptlist(

@@ -125,7 +125,7 @@ class ConceptRelations(dict):
     Class handles relations between concepts.
     """
     def __init__(self, path, multiple=False):
-        rels = defaultdict(lambda : defaultdict(set))
+        rels = defaultdict(lambda: defaultdict(set))
         self.raw = list(read_dicts(path))
         for item in self.raw:
             if multiple:

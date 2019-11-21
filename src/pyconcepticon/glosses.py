@@ -113,6 +113,10 @@ def parse_gloss(gloss, language='en'):
     elif language == 'de':
         pos_markers = {'der': 'noun', 'die': 'noun', 'das': 'noun'}
         prefixes = []
+    elif language == 'fr':
+        pos_markers = {'le': 'noun', 'la': 'noun', 'les': 'noun', 'du': 'noun',
+                'des': 'noun', 'de': 'noun', 'un': 'noun', 'une': 'noun'}
+        prefixes = ['il', 'est']
     else:
         pos_markers = {}
         prefixes = []
@@ -233,7 +237,7 @@ def concept_map2(from_, to, freqs=None, language='en', **_):
     return mapping
 
 
-def concept_map(from_, to, similarity_level=5, **kw):
+def concept_map(from_, to, similarity_level=5, language='en', **kw):
     """
     Function compares two concept lists and outputs suggestions for mapping.
 
@@ -257,7 +261,7 @@ def concept_map(from_, to, similarity_level=5, **kw):
                 concept, pos, frequency = concept
             else:
                 pos, frequency = None, 0
-            glosses[key][i] = parse_gloss(concept)
+            glosses[key][i] = parse_gloss(concept, language=language)
             if pos or frequency:
                 for gloss in glosses[key][i]:
                     gloss.pos = pos

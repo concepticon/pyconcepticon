@@ -1,0 +1,9 @@
+{
+  "dc:publisher": {
+    "dc:Location": "example"
+  },
+  "dc:license": {
+    "url": "http://example.org"
+  },
+  "dcat:accessURL": "http://example.org"
+}

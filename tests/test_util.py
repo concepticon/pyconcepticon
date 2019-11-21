@@ -15,11 +15,11 @@ def test_UnicodeWriter(tmpdir):
     assert tst.read_text('utf8') == "x\ty\n#<<<\t\na\tb\nc\td\n#>>>\t\n"
 
 
-def test_read_dicts(fixturedir):
-    res = read_dicts(fixturedir / 'concepticondata' / 'concepticon.tsv')
+def test_read_dicts(api):
+    res = read_dicts(api.repos / 'concepticondata' / 'concepticon.tsv')
     assert res[0]['ID'] == '1'
     res = read_dicts(
-        fixturedir / 'concepticondata' / 'concepticon.tsv',
+        api.repos / 'concepticondata' / 'concepticon.tsv',
         schema=dict(columns=[dict(datatype='integer', name='ID')]))
     assert res[0]['ID'] == 1
 

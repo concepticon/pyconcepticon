@@ -50,7 +50,8 @@ def _get_conceptlist(cl, args, path_only=False):
     if cl.exists() and cl.is_file():
         if path_only:
             return cl
-        return Conceptlist.from_file(cl)
+
+        return Conceptlist.from_file(cl)  # pragma: no cover
 
     if cl.parent.name == '':
         if path_only:
