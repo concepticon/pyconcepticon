@@ -214,10 +214,13 @@ class Concepticon(API):
         from_ = read_dicts(clist)
 
         to = self._get_map_for_language(language, otherlist)
+        gloss = {'fr': 'FRENCH', 'en': 'ENGLISH', 'es':
+                'SPANISH'}.get(language, 'GLOSS')
         cmap = (concept_map if full_search else concept_map2)(
-            [i.get('GLOSS', i.get('ENGLISH')) for i in from_],
+            [i.get('GLOSS', i.get(gloss)) for i in from_],
             [i[1] for i in to],
             similarity_level=similarity_level,
+            language=language
         )
         good_matches = 0
         with UnicodeWriter(out) as writer:
@@ -270,7 +273,8 @@ class Concepticon(API):
         cmap = cfunc(
             entries,
             tox,
-            similarity_level=similarity_level)
+            similarity_level=similarity_level,
+            language=language)
         for i, e in enumerate(entries):
             match, simil = cmap.get(i, [[], 100])
             yield set((e, to[m][0], to[m][1].split("///")[0], simil) for m in match)
