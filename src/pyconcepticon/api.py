@@ -17,7 +17,6 @@ except ImportError:  # pragma: no cover
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
-from pyconcepticon import metadata
 
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
@@ -33,6 +32,16 @@ class Concepticon(API):
     Objects for the various types of data stored in concepticon-data can be accessed as
     dictionaries mapping object IDs to specific object type instances.
     """
+    __default_metadata__ = {
+        'url': 'https://concepticon.clld.org',
+        'title': 'Concepticon',
+        'description': 'A Resource for the Linking of Concept Lists',
+        'publisher.name': 'Max Planck Institute for the Science of Human History',
+        'publisher.place': 'Jena',
+        'publisher.url': 'https://www.shh.mpg.de',
+        'publisher.contact': 'concepticon@shh.mpg.de',
+    }
+
     def __init__(self, repos=None):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
@@ -41,11 +50,6 @@ class Concepticon(API):
             repos = cldfcatalog.Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
-
-    @lazyproperty
-    def dataset_metadata(self):
-        mdp = self.repos / 'metadata.json'
-        return metadata.Metadata.from_jsonld(jsonlib.load(mdp) if mdp.exists() else {})
 
     def data_path(self, *comps):
         """
