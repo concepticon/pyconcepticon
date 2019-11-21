@@ -1,5 +1,6 @@
 """
 Dumps Concepticon's contents for English, German, Chinese, and French.
+
 Notes
 -----
 Data are by default dumped into a structured JSON file in html/data.js.

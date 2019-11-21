@@ -55,8 +55,6 @@ def readme_concepticondata(api, cls):
             D[concept.concepticon_gloss].append((cl.id, concept.label))
             G[concept.label].append((concept.concepticon_id, concept.concepticon_gloss, cl.id))
             labels.update([concept.label])
-
-
     txt = ["""
 # Concepticon Statistics
 * concept sets (used): {0}

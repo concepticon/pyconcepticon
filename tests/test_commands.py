@@ -84,7 +84,6 @@ def test_create_metadata(tmprepos, _main):
     assert mdpath.exists()
 
 
-
 def test_check(api, capsys, mocker, tmpdir, _main):
     test = tmpdir.join('Sun-1991-1004.tsv')
     copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
