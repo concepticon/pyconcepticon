@@ -114,8 +114,15 @@ def parse_gloss(gloss, language='en'):
         pos_markers = {'der': 'noun', 'die': 'noun', 'das': 'noun'}
         prefixes = []
     elif language == 'fr':
-        pos_markers = {'le': 'noun', 'la': 'noun', 'les': 'noun', 'du': 'noun',
-                'des': 'noun', 'de': 'noun', 'un': 'noun', 'une': 'noun'}
+        pos_markers = {
+            'le': 'noun',
+            'la': 'noun',
+            'les': 'noun',
+            'du': 'noun',
+            'des': 'noun',
+            'de': 'noun',
+            'un': 'noun',
+            'une': 'noun'}
         prefixes = ['il', 'est']
     else:
         pos_markers = {}
