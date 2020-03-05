@@ -56,12 +56,13 @@ def run(args):
                 writer.writerow(row)
 
     # write adapted metadata to the new path:
-    fname = cl.path.name.replace(args.from_, args.to) + MD_SUFFIX
+    fname_md = cl.path.name.replace(args.from_, args.to) + MD_SUFFIX
+    fname_url = cl.path.name.replace(args.from_, args.to)
     md = jsonlib.load(
         cl.path.parent / (cl.path.name + MD_SUFFIX),
         object_pairs_hook=collections.OrderedDict)
-    md['tables'][0]['url'] = fname
-    jsonlib.dump(md, cl.path.parent / fname, indent=4)
+    md['tables'][0]['url'] = fname_url
+    jsonlib.dump(md, cl.path.parent / fname_md, indent=4)
 
     # remove obsolete concept list and metadata:
     cl.path.unlink()
