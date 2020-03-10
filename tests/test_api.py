@@ -54,6 +54,7 @@ def test_Conceptlist(fixturedir, api):
             url=None)
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_Conceptset(api):
     assert len(api.conceptsets['1906'].concepts) > 0
 

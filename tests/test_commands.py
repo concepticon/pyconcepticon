@@ -32,12 +32,14 @@ def test_citation(capsys, _main):
     assert '2.0' in out
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_validate(capsys, _main):
     _main('validate')
     out, err = capsys.readouterr()
     assert 'unspecified column' in out
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_make_app(_main):
     _main('make_linkdata')
     _main('make_app')
@@ -58,16 +60,19 @@ def test_upload_sources(_main, mocker, tmprepos):
     _main('upload_sources', '--cdstar-catalog', str(tmprepos / 'c'))
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_notlinked(_main, capsys):
     _main('notlinked')
     out, _ = capsys.readouterr()
     assert 'Sun-1991-1004-275' in out
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_test(_main):
     _main('test')
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_make_linkdata(tmprepos, _main, caplog):
     shutil.rmtree(str(tmprepos / 'mappings'))
     with caplog.at_level(logging.INFO):
@@ -106,6 +111,7 @@ def test_shring(_main, capsys):
     assert 500 < len(out.split('\n')) < 1000
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_mergers(_main):
     _main('mergers', 'Sun-1991-1004')
 
@@ -134,6 +140,7 @@ def test_link(fixturedir, tmpdir, capsys, _main):
     assert 'mismatch' in out
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_stats(_main, tmprepos):
     assert not tmprepos.joinpath('concepticondata', 'README.md').exists()
     _main('stats')
@@ -146,12 +153,14 @@ def test_attributes(_main, capsys):
     assert 'Occurrences' in out
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_union(capsys, _main):
     _main('union','Perrin-2010-110', 'Sun-1991-1004' )
     out, err = capsys.readouterr()
     assert 920 == len(out.split('\n'))
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_intersection(capsys, _main):
     _main('intersection','Perrin-2010-110', 'Sun-1991-1004' )
     out, err = capsys.readouterr()
