@@ -41,6 +41,7 @@ def test_Conceptlist(sun1991, api):
         Conceptlist(**_kw)
 
 
+@pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_compare_conceptlists(api, sun1991):
     list(compare_conceptlists(api, sun1991))
     list(compare_conceptlists(api, sun1991.stem))

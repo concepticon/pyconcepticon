@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyconcepticon',
-    version='2.5.2.dev0',
+    version='2.6.1.dev0',
     description='programmatic access to concepticon-data',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -14,6 +14,7 @@ setup(
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     author='',
     author_email='forkel@shh.mpg.de',
