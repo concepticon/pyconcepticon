@@ -222,7 +222,13 @@ class Concepticon(API):
                 'fr': 'FRENCH',
                 'en': 'ENGLISH',
                 'es': 'SPANISH',
+                'de': 'GERMAN',
+                'pl': 'POLISH',
                 'lt': 'LATIN',
+                'zh': 'CHINESE',
+                'pt': 'PORTUGUESE',
+                'ru': 'RUSSIAN',
+                'it': 'ITALIAN',
                 }.get(language, 'GLOSS')
         cmap = (concept_map if full_search else concept_map2)(
             [i.get('GLOSS', i.get(gloss)) for i in from_],
