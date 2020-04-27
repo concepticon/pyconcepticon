@@ -91,6 +91,16 @@ def valid_concepticon_gloss(items, args):
                 t.append([cgloss, line] + id_number_gloss(item))
 
 
+def valid_concepticon_id(items, args):
+    valid = set(cs.id for cs in args.repos.conceptsets.values() if not cs.replacement_id)
+    with Result(
+            args, 'CONCEPTICON_ID', 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
+        for line, item in items:
+            cid = item.get(CS_ID)
+            if cid and cid not in valid:
+                t.append([cid, line] + id_number_gloss(item))
+
+
 def provisional_concepticon_gloss(items, args):
     """
     If CONCEPTICON_GLOSS is prefixed with "!", it must not have a CONCEPTICON_ID.
@@ -139,4 +149,5 @@ CHECKS = [
     unique_number,
     matching_concepticon_gloss_and_id,
     valid_concepticon_gloss,
+    valid_concepticon_id,
 ]

@@ -19,6 +19,17 @@ def run(args):
 
 def _write_linking_data(api, l, args):
     out, freqs = collections.defaultdict(int), collections.defaultdict(int)
+    # find those concept sets that are wrongly linked, they should not go into
+    # the mapping, so we just make a re-linker here
+    rep = {}
+    for c in api.conceptsets.values():
+        if c.replacement_id:
+            rep[c.id] = c.replacement_id
+            rep[c.gloss] = api.conceptsets[c.replacement_id].gloss
+        else:
+            rep[c.id] = c.id
+            rep[c.gloss] = c.gloss
+    print(len(rep))
 
     for clist in api.conceptlists.values():
         args.log.info("checking {clist.id}".format(clist=clist))
@@ -33,23 +44,24 @@ def _write_linking_data(api, l, args):
                         gls = row.attributes[l.name].strip("*$-—+")
 
                 if gls:
-                    out[row.concepticon_gloss + "///" + gls, row.concepticon_id] += 1
-                    freqs[row.concepticon_id] += 1
+                    out[rep[row.concepticon_gloss] + "///" + gls, rep[row.concepticon_id]] += 1
+                    freqs[rep[row.concepticon_id]] += 1
 
     if l.iso2 == "en":
         for cset in api.conceptsets.values():
-            gloss = cset.gloss
+            gloss = rep[cset.gloss]
+            cid = rep[cset.id]
             if cset.ontological_category == "Person/Thing":
-                out[gloss + "///the " + cset.gloss.lower(), cset.id] = freqs[cset.id]
-                out[gloss + "///the " + cset.gloss.lower() + "s", cset.id] = freqs[cset.id]
+                out[gloss + "///the " + cset.gloss.lower(), cid] = freqs[cid]
+                out[gloss + "///the " + cset.gloss.lower() + "s", cid] = freqs[cid]
             elif cset.ontological_category == "Action/Process":
-                out[gloss + "///to " + cset.gloss.lower(), cset.id] = freqs[cset.id]
+                out[gloss + "///to " + cset.gloss.lower(), cid] = freqs[cid]
             elif cset.ontological_category == "Property":
-                out[gloss + "///" + cset.gloss.lower() + " (adjective)", cset.id] = freqs[cset.id]
+                out[gloss + "///" + cset.gloss.lower() + " (adjective)", cid] = freqs[cid]
             elif cset.ontological_category == "Classifier":
-                out[gloss + "///" + cset.gloss.lower() + " (classifier)", cset.id] = freqs[cset.id]
+                out[gloss + "///" + cset.gloss.lower() + " (classifier)", cid] = freqs[cid]
             else:
-                out[gloss + "///" + cset.gloss.lower(), cset.id] = freqs[cset.id]
+                out[gloss + "///" + cset.gloss.lower(), cid] = freqs[cid]
 
     p = api.path("mappings", "map-{0}.tsv".format(l.iso2))
     if not p.parent.exists():
