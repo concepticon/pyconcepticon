@@ -92,9 +92,7 @@ def valid_concepticon_gloss(items, args):
 
 
 def valid_concepticon_id(items, args):
-    
-    valid = set(cs.id for cs in args.repos.conceptsets.values() if not
-            cs.replacement_id)
+    valid = set(cs.id for cs in args.repos.conceptsets.values() if not cs.replacement_id)
     with Result(
             args, 'CONCEPTICON_ID', 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for line, item in items:

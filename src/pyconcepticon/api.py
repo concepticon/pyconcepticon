@@ -219,17 +219,17 @@ class Concepticon(API):
 
         to = self._get_map_for_language(language, otherlist)
         gloss = {
-                'fr': 'FRENCH',
-                'en': 'ENGLISH',
-                'es': 'SPANISH',
-                'de': 'GERMAN',
-                'pl': 'POLISH',
-                'lt': 'LATIN',
-                'zh': 'CHINESE',
-                'pt': 'PORTUGUESE',
-                'ru': 'RUSSIAN',
-                'it': 'ITALIAN',
-                }.get(language, 'GLOSS')
+            'fr': 'FRENCH',
+            'en': 'ENGLISH',
+            'es': 'SPANISH',
+            'de': 'GERMAN',
+            'pl': 'POLISH',
+            'lt': 'LATIN',
+            'zh': 'CHINESE',
+            'pt': 'PORTUGUESE',
+            'ru': 'RUSSIAN',
+            'it': 'ITALIAN',
+        }.get(language, 'GLOSS')
         cmap = (concept_map if full_search else concept_map2)(
             [i.get('GLOSS', i.get(gloss)) for i in from_],
             [i[1] for i in to],
