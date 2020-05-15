@@ -1,6 +1,7 @@
-import shutil
 import shlex
+import shutil
 import logging
+import pathlib
 import collections
 
 import pytest
@@ -40,11 +41,12 @@ def test_validate(capsys, _main):
 
 
 @pytest.mark.filterwarnings("ignore:Unspecified column")
-def test_make_app(_main):
+def test_make_app(_main, tmpdir):
     _main('make_linkdata')
     _main('make_app')
     _main('make_app')
-    _main('dump --destination=test.zip')
+    _main('dump --destination={}'.format(str(tmpdir.join('test.zip'))))
+    assert pathlib.Path(str(tmpdir)).joinpath('test.zip').exists()
 
 
 def test_rename(capsys, _main, tmprepos):
