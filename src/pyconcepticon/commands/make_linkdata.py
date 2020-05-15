@@ -17,6 +17,7 @@ def run(args):
             _write_linking_data(args.repos, l, args)
 
 
+
 def _write_linking_data(api, l, args):
     out, freqs = collections.defaultdict(int), collections.defaultdict(int)
     # find those concept sets that are wrongly linked, they should not go into
@@ -29,7 +30,6 @@ def _write_linking_data(api, l, args):
         else:
             rep[c.id] = c.id
             rep[c.gloss] = c.gloss
-    print(len(rep))
 
     for clist in api.conceptlists.values():
         args.log.info("checking {clist.id}".format(clist=clist))

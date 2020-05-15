@@ -44,6 +44,7 @@ def test_make_app(_main):
     _main('make_linkdata')
     _main('make_app')
     _main('make_app')
+    _main('dump --destination=test.zip')
 
 
 def test_rename(capsys, _main, tmprepos):
