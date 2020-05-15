@@ -12,9 +12,11 @@ from csvw.dsv import UnicodeWriter
 
 
 def run(args):
+    mappings = {}
     for l in args.repos.vocabularies["COLUMN_TYPES"].values():
         if getattr(l, "iso2", None):
             _write_linking_data(args.repos, l, args)
+
 
 
 def _write_linking_data(api, l, args):
@@ -29,7 +31,6 @@ def _write_linking_data(api, l, args):
         else:
             rep[c.id] = c.id
             rep[c.gloss] = c.gloss
-    print(len(rep))
 
     for clist in api.conceptlists.values():
         args.log.info("checking {clist.id}".format(clist=clist))
