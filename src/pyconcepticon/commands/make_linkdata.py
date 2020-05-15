@@ -12,7 +12,6 @@ from csvw.dsv import UnicodeWriter
 
 
 def run(args):
-    mappings = {}
     for l in args.repos.vocabularies["COLUMN_TYPES"].values():
         if getattr(l, "iso2", None):
             _write_linking_data(args.repos, l, args)
