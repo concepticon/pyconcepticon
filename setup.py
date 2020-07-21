@@ -44,7 +44,7 @@ setup(
         ],
         'test': [
             'mock',
-            'pytest>=3.6',
+            'pytest>=5.4',
             'pytest-mock',
             'pytest-cov',
             'coverage>=4.2',
