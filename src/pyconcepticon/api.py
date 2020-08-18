@@ -157,11 +157,13 @@ class Concepticon(API):
         """
         return to_dict(map(
             self._metadata,
-            [p.stem for p in self.data_path('concept_set_meta').glob('*.tsv')]))
+            [p for p in self.data_path('concept_set_meta').rglob('*.tsv')]))
 
-    def _metadata(self, id_):
-        values_path = self.data_path('concept_set_meta', id_ + '.tsv')
-        md_path = self.data_path('concept_set_meta', id_ + '.tsv' + MD_SUFFIX)
+    @staticmethod
+    def _metadata(path):
+        values_path = path
+        md_path = path.parent / (path.name + MD_SUFFIX)
+        id_ = path.stem
         assert values_path.exists() and md_path.exists()
         md = jsonlib.load(md_path)
         return Metadata(
