@@ -26,7 +26,8 @@ setup(
     zip_safe=False,
     install_requires=[
         'attrs>=18.1.0',
-        'pybtex>=0.22.2',
+        'pybtex<0.23; python_version < "3.6"',
+        'pybtex>=0.22.2; python_version > "3.5"',
         'csvw>=1.4.5',
         'clldutils>=3.4',
         'cldfcatalog>=1.3',
@@ -43,7 +44,6 @@ setup(
             'twine',
         ],
         'test': [
-            'mock',
             'pytest>=5.4',
             'pytest-mock',
             'pytest-cov',

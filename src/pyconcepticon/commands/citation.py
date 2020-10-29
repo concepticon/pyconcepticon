@@ -18,7 +18,8 @@ def register(parser):
 def zenodo_json(citation, version, editors):
     return collections.OrderedDict([
         ("description", "<p>{}</p>".format(html.escape(citation))),
-        ("alternate_identifiers", [{"scheme": "url", "identifier": "https://concepticon.clld.org"}]),
+        ("alternate_identifiers",
+         [{"scheme": "url", "identifier": "https://concepticon.clld.org"}]),
         ("title", "CLLD Concepticon. Version {}".format(version)),
         ("access_right", "open"),
         ("license", {"id": "CC-BY-4.0"}),

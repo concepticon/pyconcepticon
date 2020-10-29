@@ -39,7 +39,7 @@ class Bag(DataObject):
 def valid_int(attr_name, value):
     try:
         int(value)
-    except ValueError:
+    except ValueError:  # pragma: no cover
         raise ValueError('invalid integer {0}: {1}'.format(attr_name, value))
 
 
@@ -50,6 +50,13 @@ def valid_conceptlist_id(instance, attribute, value):
                 instance.__class__.__name__,
                 attribute.name,
                 value))
+
+
+def valid_conceptlist_author(instance, attribute, value):
+    if value.count(',') > 1 and (not any(s in value for s in [' and ', ' AND '])):
+        raise ValueError('invalid format for multiple authors: {}'.format(value))
+    if any(len(s) > 200 for s in re.split(r'\s+(?:and|AND)\s+', value)):
+        raise ValueError('suspiciously long author name in {}'.format(value))
 
 
 def valid_key(instance, attribute, value):
@@ -190,10 +197,10 @@ class Concept(Bag):
 class Conceptlist(Bag):
     _api = attr.ib()
     id = attr.ib(validator=valid_conceptlist_id)
-    author = attr.ib()
-    year = attr.ib(converter=int)
+    author = attr.ib(validator=valid_conceptlist_author)
+    year = attr.ib(converter=int, validator=lambda i, a, v: valid_int(a, v))
     list_suffix = attr.ib()
-    items = attr.ib(converter=int)
+    items = attr.ib(converter=int, validator=lambda i, a, v: valid_int(a, v))
     tags = attr.ib(converter=split_ids, validator=valid_key)
     source_language = attr.ib(converter=lambda v: split(v.lower()))
     target_language = attr.ib()

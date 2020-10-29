@@ -40,6 +40,16 @@ def test_Conceptlist(sun1991, api):
         _kw['year'] = 'xy'
         Conceptlist(**_kw)
 
+    with pytest.raises(ValueError):
+        _kw = copy.deepcopy(kw)
+        _kw['author'] = 'a b, c d, e f'
+        Conceptlist(**_kw)
+
+    with pytest.raises(ValueError):
+        _kw = copy.deepcopy(kw)
+        _kw['author'] = 205*'x'
+        Conceptlist(**_kw)
+
 
 @pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_compare_conceptlists(api, sun1991):
