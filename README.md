@@ -2,7 +2,7 @@
 
 Tooling to access and curate [Concepticon data](https://github.com/concepticon/concepticon-data).
 
-[![Build Status](https://travis-ci.org/concepticon/pyconcepticon.svg?branch=master)](https://travis-ci.org/concepticon/pyconcepticon)
+[![Build Status](https://github.com/concepticon/pyconcepticon/workflows/tests/badge.svg)](https://github.com/concepticon/pyconcepticon/actions?query=workflow%3Atests)
 [![codecov](https://codecov.io/gh/concepticon/pyconcepticon/branch/master/graph/badge.svg)](https://codecov.io/gh/concepticon/pyconcepticon)
 [![PyPI](https://img.shields.io/pypi/v/pyconcepticon.svg)](https://pypi.org/project/pyconcepticon)
 
