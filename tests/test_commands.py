@@ -27,10 +27,11 @@ def test_help(_main, capsys):
     assert 'make_app' in out
 
 
-def test_citation(capsys, _main):
+def test_citation(capsys, _main, tmprepos):
     _main('citation --version 2.0')
     out, _ = capsys.readouterr()
     assert '2.0' in out
+    assert '"dataset"' in tmprepos.joinpath('.zenodo.json').read_text(encoding='utf8')
 
 
 @pytest.mark.filterwarnings("ignore:Unspecified column")
