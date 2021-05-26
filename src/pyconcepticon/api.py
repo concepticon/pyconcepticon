@@ -11,10 +11,7 @@ from clldutils import jsonlib
 from clldutils.misc import lazyproperty
 from clldutils.apilib import API
 from clldutils.source import Source
-try:
-    import cldfcatalog
-except ImportError:  # pragma: no cover
-    cldfcatalog = None
+import cldfcatalog
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
@@ -47,8 +44,7 @@ class Concepticon(API):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
         """
-        if (repos is None) and cldfcatalog:
-            repos = cldfcatalog.Config.from_file().get_clone('concepticon')
+        repos = repos or cldfcatalog.Config.from_file().get_clone('concepticon')
         API.__init__(self, repos)
         self._to_mapping = {}
 
@@ -322,10 +318,10 @@ class Concepticon(API):
                 print(_msg('error', msg, name, line))
             return not bool(errors)
 
-        if errors:
-            return exit()
+        if errors:  # pragma: no cover
+            return exit()  # Exit early in case of structural errors.
 
-        REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^\]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
+        REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
         REF_WITHOUT_LINK_PATTERN = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
 
         # Make sure all language-specific mappings are well specified
@@ -351,11 +347,11 @@ class Concepticon(API):
                 if set(value.keys()) != cnames_schema:  # pragma: no cover
                     error('meta data {0} contains irregular number of columns in line {1}'
                           .format(meta.id, i + 2), 'name')
-                if key not in self.conceptsets:
+                if key not in self.conceptsets:  # pragma: no cover
                     error('meta data {0} references invalid CONCEPTICON_ID {2} in line {1}'
                           .format(meta.id, i + 2, key), 'name')
             for ref in split(meta.meta.get('dc:references') or ''):
-                if ref not in refs_in_bib:
+                if ref not in refs_in_bib:  # pragma: no cover
                     error('cited bibtex record not in bib: {0}'.format(ref), 'name')
                 all_refs.add(ref)
 
@@ -363,7 +359,7 @@ class Concepticon(API):
         # concept lists.
         for i, cl in enumerate(self.conceptlists.values()):
             if clids and cl.id not in clids:
-                continue
+                continue  # pragma: no cover
             fl = ('conceptlists.tsv', i + 2)
             for ref in re.findall(BIB_PATTERN, cl.note) + cl.refs:
                 if ref not in refs_in_bib:
@@ -374,11 +370,11 @@ class Concepticon(API):
             for m in REF_WITHOUT_LABEL_PATTERN.finditer(cl.note):
                 error('link without label: {0}'.format(m.string[m.start():m.end()]), *fl)
 
-            for m in REF_WITHOUT_LINK_PATTERN.finditer(cl.note):
+            for m in REF_WITHOUT_LINK_PATTERN.finditer(cl.note):  # pragma: no cover
                 error('reference not in link: {0}'.format(m.string[m.start():m.end()]), *fl)
 
             for m in REF_PATTERN.finditer(cl.note):
-                if m.group('id') not in self.conceptlists:
+                if m.group('id') not in self.conceptlists:  # pragma: no cover
                     error('invalid conceptlist ref: {0}'.format(m.group('id')), *fl)
 
             # make also sure that all sources are accompanied by a PDF, but only write a
@@ -390,7 +386,7 @@ class Concepticon(API):
 
         if not clids:
             # Only report unused references if we check all concept lists!
-            for ref in refs_in_bib - all_refs:
+            for ref in refs_in_bib - all_refs:  # pragma: no cover
                 error('unused bibtex record: {0}'.format(ref), 'references.bib')
 
         ref_cols = {
@@ -411,7 +407,7 @@ class Concepticon(API):
 
         for fname in self.data_path('conceptlists').glob('*.tsv'):
             if clids and fname.stem not in clids:
-                continue
+                continue  # pragma: no cover
             if fname.stem not in self.conceptlists:  # pragma: no cover
                 error(
                     'conceptlist missing in conceptlists.tsv: {0}'.format(fname.name), '')
@@ -426,12 +422,12 @@ class Concepticon(API):
             cols_in_md = []
             for col in cl.metadata.tableSchema.columns:
                 cnames = []  # all names or aliases csvw will recognize for this column
-                if col.name in cols_in_md:
+                if col.name in cols_in_md:  # pragma: no cover
                     error('Duplicate name ot title in table schema: {0}'.format(col.name), cl.id)
                 cnames.append(col.name)
                 if col.titles:
                     c = col.titles.getfirst()
-                    if c in cols_in_md:
+                    if c in cols_in_md:  # pragma: no cover
                         error('Duplicate name ot title in table schema: {0}'.format(c), cl.id)
                     cnames.append(c)
                 cols_in_md.extend(cnames)
@@ -457,9 +453,9 @@ class Concepticon(API):
 
                     if concept.concepticon_id:
                         cs = self.conceptsets.get(concept.concepticon_id)
-                        if not cs:
+                        if not cs:  # pragma: no cover
                             error('invalid conceptset ID %s' % concept.concepticon_id, cl.id)
-                        elif cs.gloss != concept.concepticon_gloss:
+                        elif cs.gloss != concept.concepticon_gloss:  # pragma: no cover
                             error(
                                 'wrong conceptset GLOSS for ID {0}: {1} -> {2}'.format(
                                     cs.id, concept.concepticon_gloss, cs.gloss),
@@ -481,13 +477,13 @@ class Concepticon(API):
                             # check that there are not leading and trailing spaces
                             # (while computationally expensive, this helps catch really
                             # hard to find typos)
-                            if val != val.strip():
+                            if val != val.strip():  # pragma: no cover
                                 error("leading or trailing spaces in value for %s: '%s'" %
                                       (attr, val), cl.id, i + 2)
 
                             if val not in values:  # pragma: no cover
                                 error('invalid value for %s: %s' % (attr, val), cl.id, i + 2)
-            except TypeError as e:
+            except TypeError as e:  # pragma: no cover
                 broken_cls.append(cl.id)
                 error(str(e), cl.id)
 
@@ -515,7 +511,7 @@ class Concepticon(API):
 
         for cl in self.conceptlists.values():
             if cl.id in broken_cls:
-                continue
+                continue  # pragma: no cover
             for concept in cl.concepts.values():
                 if concept.concepticon_id in deprecated:  # pragma: no cover
                     error('deprecated concept set {0} linked for {1}'.format(
