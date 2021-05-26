@@ -330,7 +330,7 @@ def compare_conceptlists(api, *conceptlists, **kw):
     # solution for this)
     proper_concepts = set()
     for c, lists in commons.items():
-        if len(set([x[0] for x in lists])) > 1 and [d for l, d, i, g in lists if d == 0]:
+        if len(set([x[0] for x in lists])) > 1 and [d for _, d, i, g in lists if d == 0]:
             proper_concepts.add(c)
 
     # get a list of concepts that should be split into subsets (so they should
@@ -347,15 +347,15 @@ def compare_conceptlists(api, *conceptlists, **kw):
             for a, b, c, d in lists:
                 if b >= 0:
                     listcheck[a] += [(a, b, c, d)]
-            for l, concepts in listcheck.items():
+            for _, concepts in listcheck.items():
                 if len([x for x in concepts if x[1] > 0]) > 1:
                     split_concepts.add(cid)
                     break
             if cid not in split_concepts:
-                if len([l for l in lists if l[1] > 0]) == len(lists):
-                    if len(set([l[2] for l in lists])) > 1:
-                        for l in lists:
-                            blacklist.add(l[2])
+                if len([l_ for l_ in lists if l_[1] > 0]) == len(lists):
+                    if len(set([l_[2] for l_ in lists])) > 1:
+                        for l_ in lists:
+                            blacklist.add(l_[2])
 
     for cid, lists in sorted(
             commons.items(), key=lambda x: api.conceptsets[x[0]].gloss):

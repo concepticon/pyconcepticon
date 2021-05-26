@@ -212,8 +212,8 @@ def concept_map2(from_, to, freqs=None, language='en', **_):
     # extract glossing information from the data
     glosses = {'from': defaultdict(list), 'to': defaultdict(list)}
     mapped = defaultdict(lambda: defaultdict(list))
-    for l, key in [(from_, 'from'), (to, 'to')]:
-        for i, concept in enumerate(l):
+    for l_, key in [(from_, 'from'), (to, 'to')]:
+        for i, concept in enumerate(l_):
             for gloss in parse_gloss(concept, language=language):
                 glosses[key][i] += [gloss]
                 mapped[gloss.main][key] += [i]
@@ -262,8 +262,8 @@ def concept_map(from_, to, similarity_level=5, language='en', **kw):
     """
     # extract glossing information from the data
     glosses = {'from': {}, 'to': {}}
-    for l, key in [(from_, 'from'), (to, 'to')]:
-        for i, concept in enumerate(l):
+    for l_, key in [(from_, 'from'), (to, 'to')]:
+        for i, concept in enumerate(l_):
             if isinstance(concept, tuple):
                 concept, pos, frequency = concept
             else:

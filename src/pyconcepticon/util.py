@@ -141,18 +141,11 @@ def load_conceptlist(idf):
         return clist
 
 
-def natural_sort(l):
-    """
-    Code-piece from
-    http://stackoverflow.com/questions/4836710/does-python-have-a-built-in-function-for-string-natural-sort
-    """
-    def convert(text):
-        return int(text) if text.isdigit() else text.lower()
-
+def natural_sort(string):
     def alphanum_key(key):
-        return [convert(c) for c in re.split('([0-9]+)', key)]
+        return [int(c) if c.isdigit() else c.lower() for c in re.split('([0-9]+)', key)]
 
-    return sorted(l, key=alphanum_key)
+    return sorted(string, key=alphanum_key)
 
 
 def write_conceptlist(clist, filename, header=False):

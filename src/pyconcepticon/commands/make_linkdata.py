@@ -12,12 +12,12 @@ from csvw.dsv import UnicodeWriter
 
 
 def run(args):
-    for l in args.repos.vocabularies["COLUMN_TYPES"].values():
-        if getattr(l, "iso2", None):
-            _write_linking_data(args.repos, l, args)
+    for lang in args.repos.vocabularies["COLUMN_TYPES"].values():
+        if getattr(lang, "iso2", None):
+            _write_linking_data(args.repos, lang, args)
 
 
-def _write_linking_data(api, l, args):
+def _write_linking_data(api, lang, args):
     out, freqs = collections.defaultdict(int), collections.defaultdict(int)
     # find those concept sets that are wrongly linked, they should not go into
     # the mapping, so we just make a re-linker here
@@ -35,18 +35,18 @@ def _write_linking_data(api, l, args):
         for row in clist.concepts.values():
             if row.concepticon_id:
                 gls = None
-                if l.iso2 == "en":
+                if lang.iso2 == "en":
                     if row.english:
                         gls = row.english.strip("*$-—+")
                 else:
-                    if l.name in row.attributes and row.attributes[l.name]:
-                        gls = row.attributes[l.name].strip("*$-—+")
+                    if lang.name in row.attributes and row.attributes[lang.name]:
+                        gls = row.attributes[lang.name].strip("*$-—+")
 
                 if gls:
                     out[rep[row.concepticon_gloss] + "///" + gls, rep[row.concepticon_id]] += 1
                     freqs[rep[row.concepticon_id]] += 1
 
-    if l.iso2 == "en":
+    if lang.iso2 == "en":
         for cset in api.conceptsets.values():
             gloss = rep[cset.gloss]
             cid = rep[cset.id]
@@ -62,7 +62,7 @@ def _write_linking_data(api, l, args):
             else:
                 out[gloss + "///" + cset.gloss.lower(), cid] = freqs[cid]
 
-    p = api.path("mappings", "map-{0}.tsv".format(l.iso2))
+    p = api.path("mappings", "map-{0}.tsv".format(lang.iso2))
     if not p.parent.exists():
         p.parent.mkdir()
     with UnicodeWriter(p, delimiter="\t") as f:

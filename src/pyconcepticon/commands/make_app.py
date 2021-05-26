@@ -20,8 +20,8 @@ def register(parser):
 def run(args):
     data = collections.defaultdict(list)
 
-    def key(g, l):
-        return "{0}---{1}".format(g, l)
+    def key(g, l_):
+        return "{0}---{1}".format(g, l_)
 
     for lang in ["en", "de", "zh", "fr", "ru", "es", "pt"]:
         for cidx, gloss in args.api._get_map_for_language(lang):
