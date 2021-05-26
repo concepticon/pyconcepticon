@@ -5,9 +5,9 @@ from clldutils.jsonlib import load
 from pyconcepticon.util import *
 
 
-def test_UnicodeWriter(tmpdir):
-    tst = tmpdir.join('tst')
-    with UnicodeWriter(str(tst)) as fp:
+def test_UnicodeWriter(tmp_path):
+    tst = tmp_path / 'tst'
+    with UnicodeWriter(tst) as fp:
         with pytest.raises(AssertionError):
             fp.writeblock([['a', 'b'], ['c', 'd']])
         fp.writerow(['x', 'y'])
@@ -29,25 +29,25 @@ def test_to_dict():
         to_dict([None, None], id)
 
 
-def test_load_conceptlist(tmpdir):
-    fname = tmpdir.join('cl.tsv')
-    fname.write("""\
+def test_load_conceptlist(tmp_path):
+    fname = tmp_path / 'cl.tsv'
+    fname.write_text("""\
 ID	NUMBER	ENGLISH	PROTOWORLD	CONCEPTICON_ID	CONCEPTICON_GLOSS
 Bengtson-1994-27-1	1	mother, older femaile relative	AJA	1216	MOTHER
 Bengtson-1994-27-1	2	knee, to bend	BU(N)KA	1371
-""")
+""", encoding='utf8')
 
-    res = load_conceptlist(str(fname))
+    res = load_conceptlist(fname)
     assert res['splits']
-    out = tmpdir.join('clist')
-    write_conceptlist(res, str(out))
+    out = tmp_path / 'clist'
+    write_conceptlist(res, out)
     assert out.read_text('utf8')
     visit(lambda l, r: r, str(fname))
 
 
-def test_SourcesCatalog(tmpdir):
-    cat_path = tmpdir.join('test.json')
-    with SourcesCatalog(str(cat_path)) as cat:
+def test_SourcesCatalog(tmp_path):
+    cat_path = tmp_path / 'test.json'
+    with SourcesCatalog(cat_path) as cat:
         cat.add(
             'key', Object('id', [Bitstream('bsid', 5, 'text/plain', '', '', '')], {}))
         assert 'key' in cat

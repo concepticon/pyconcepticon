@@ -11,10 +11,10 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     author='',
     author_email='forkel@shh.mpg.de',
@@ -26,8 +26,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'attrs>=18.1.0',
-        'pybtex<0.23; python_version < "3.6"',
-        'pybtex>=0.22.2; python_version > "3.5"',
+        'pybtex>=0.22.2',
         'csvw>=1.4.5',
         'clldutils>=3.4',
         'cldfcatalog>=1.3',

@@ -41,12 +41,12 @@ def test_validate(capsys, _main):
 
 
 @pytest.mark.filterwarnings("ignore:Unspecified column")
-def test_make_app(_main, tmpdir):
+def test_make_app(_main, tmp_path):
     _main('make_linkdata')
     _main('make_app')
     _main('make_app')
-    _main('dump --destination={}'.format(str(tmpdir.join('test.zip'))))
-    assert pathlib.Path(str(tmpdir)).joinpath('test.zip').exists()
+    _main('dump --destination={}'.format(tmp_path / 'test.zip'))
+    assert tmp_path.joinpath('test.zip').exists()
 
 
 def test_rename(capsys, _main, tmprepos):
@@ -92,9 +92,9 @@ def test_create_metadata(tmprepos, _main):
     assert mdpath.exists()
 
 
-def test_check(api, capsys, mocker, tmpdir, _main):
-    test = tmpdir.join('Sun-1991-1004.tsv')
-    copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), str(test))
+def test_check(api, capsys, tmp_path, _main):
+    test = tmp_path / 'Sun-1991-1004.tsv'
+    copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), test)
     _main('check', str(test))
     out, err = capsys.readouterr()
     assert 'Sun-1991-1004-2 ' not in out
@@ -123,20 +123,20 @@ def test_map_concepts(_main):
     _main('map_concepts', 'Sun-1991-1004')
 
 
-def test_link(fixturedir, tmpdir, capsys, _main):
+def test_link(fixturedir, tmp_path, capsys, _main):
     with pytest.raises(SystemExit):
         _main('link', '.')
 
     def nattr(p, attr):
         return len(nfilter([getattr(i, attr, None) for i in read_all(str(p))]))
 
-    test = tmpdir.join('test.tsv')
-    copy(fixturedir.joinpath('conceptlist.tsv'), str(test))
+    test = tmp_path / 'test.tsv'
+    copy(fixturedir.joinpath('conceptlist.tsv'), test)
     assert nattr(test, 'CONCEPTICON_GLOSS') == 0
     _main('link', str(test))
     assert nattr(test, 'CONCEPTICON_GLOSS') == 1
 
-    copy(fixturedir.joinpath('conceptlist2.tsv'), str(test))
+    copy(fixturedir.joinpath('conceptlist2.tsv'), test)
     _main('link', str(test))
     out, err = capsys.readouterr()
     assert 'unknown CONCEPTICON_GLOSS' in out
