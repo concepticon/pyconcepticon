@@ -96,6 +96,7 @@ def test_lookup(api):
 def test_check(api, capsys):
     assert not api.check()
     out, _ = capsys.readouterr()
+    assert 'Duplicate ISO' in out
     assert 'link without label' in out
 
 

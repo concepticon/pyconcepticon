@@ -1,3 +1,4 @@
+import collections
 import re
 from operator import itemgetter
 from collections import defaultdict, namedtuple, OrderedDict
@@ -326,6 +327,17 @@ class Concepticon(API):
 
         REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^\]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
         REF_WITHOUT_LINK_PATTERN = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
+
+        # Make sure all language-specific mappings are well specified
+        iso_langs = [
+            lang.iso2 for lang in self.vocabularies['COLUMN_TYPES'].values()
+            if isinstance(lang, Languoid) and lang.iso2]
+        if len(iso_langs) != len(set(iso_langs)):
+            error(
+                'Duplicate ISO codes: {}'.format(collections.Counter(iso_langs).most_common(1)),
+                'concepticon.json')
+        assert set(p.stem.split('-')[1] for p in self.path('mappings').glob('map-*.tsv'))\
+            .issubset(iso_langs)
 
         # We collect all cite keys used to refer to references.
         all_refs = set()
