@@ -18,7 +18,7 @@ def register(parser):
 
 
 def run(args):
-    if args.repos.check(*args.clids):
+    if args.repos.check(*args.clids):  # pragma: no cover
         args.log.info("all integrity tests passed: OK")
     else:  # pragma: no cover
         args.log.error("inconsistent data in repository {0}".format(args.repos.repos))

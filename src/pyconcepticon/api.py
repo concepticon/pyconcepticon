@@ -1,8 +1,9 @@
-import collections
 import re
-from operator import itemgetter
-from collections import defaultdict, namedtuple, OrderedDict
+import typing
+import pathlib
+import operator
 import warnings
+import collections
 
 
 import pybtex.database
@@ -22,6 +23,8 @@ from pyconcepticon.models import (  # noqa: F401
     REF_PATTERN, compare_conceptlists, MD_SUFFIX,
 )
 
+Editor = collections.namedtuple('Editor', ['name', 'start', 'end'])
+
 
 class Concepticon(API):
     """
@@ -34,13 +37,13 @@ class Concepticon(API):
         'url': 'https://concepticon.clld.org',
         'title': 'Concepticon',
         'description': 'A Resource for the Linking of Concept Lists',
-        'publisher.name': 'Max Planck Institute for the Science of Human History',
-        'publisher.place': 'Jena',
-        'publisher.url': 'https://www.shh.mpg.de',
-        'publisher.contact': 'concepticon@shh.mpg.de',
+        'publisher.name': 'Max Planck Institute for Evolutionary Anthropology',
+        'publisher.place': 'Leipzig',
+        'publisher.url': 'https://www.eva.mpg.de',
+        'publisher.contact': 'concepticon@eva.mpg.de',
     }
 
-    def __init__(self, repos=None):
+    def __init__(self, repos: typing.Optional[typing.Union[str, pathlib.Path]] = None):
         """
         :param repos: Path to a clone or source dump of concepticon-data.
         """
@@ -48,16 +51,15 @@ class Concepticon(API):
         API.__init__(self, repos)
         self._to_mapping = {}
 
-    def data_path(self, *comps):
+    def data_path(self, *comps: str) -> pathlib.Path:
         """
         Create a path relative to the `concepticondata` directory within the source repos.
         """
         return self.path('concepticondata', *comps)
 
     @lazyproperty
-    def editors(self):
+    def editors(self) -> typing.List[Editor]:
         res = []
-        Editor = namedtuple('Editor', ['name', 'start', 'end'])
         in_editors, in_table = False, False
         for line in readlines(self.path('CONTRIBUTORS.md'), strip=True):
             if in_editors and line.startswith('#'):
@@ -80,7 +82,7 @@ class Concepticon(API):
         return res
 
     @lazyproperty
-    def vocabularies(self):
+    def vocabularies(self) -> typing.Dict[str, dict]:
         """
         Provide access to a `dict` of controlled vocabularies.
         """
@@ -92,19 +94,20 @@ class Concepticon(API):
         return res
 
     @property
-    def bibfile(self):
+    def bibfile(self) -> pathlib.Path:
         return self.data_path('references', 'references.bib')
 
     @lazyproperty
-    def sources(self):
+    def sources(self) -> dict:
         return jsonlib.load(self.data_path('sources', 'cdstar.json'))
 
     @lazyproperty
     def retirements(self):
-        return jsonlib.load(self.data_path('retired.json'), object_pairs_hook=OrderedDict)
+        return jsonlib.load(
+            self.data_path('retired.json'), object_pairs_hook=collections.OrderedDict)
 
     def add_retirement(self, type_, repl):
-        obj = OrderedDict()
+        obj = collections.OrderedDict()
         for k in ['id', 'comment', 'replacement']:
             obj[k] = repl[k]
             assert obj[k]
@@ -114,19 +117,16 @@ class Concepticon(API):
         jsonlib.dump(self.retirements, self.data_path('retired.json'), indent=2)
 
     @lazyproperty
-    def bibliography(self):
+    def bibliography(self) -> typing.Dict[str, Source]:
         """
         :returns: `dict` mapping BibTeX IDs to `Reference` instances.
         """
-        refs = []
-        with self.bibfile.open(encoding='utf8') as fp:
-            for key, entry in pybtex.database.parse_string(
-                    fp.read(), bib_format='bibtex').entries.items():
-                refs.append(Source.from_entry(key, entry))
-        return to_dict(refs)
+        return to_dict(
+            Source.from_entry(key, entry) for key, entry in pybtex.database.parse_string(
+                self.bibfile.read_text(encoding='utf8'), bib_format='bibtex').entries.items())
 
     @lazyproperty
-    def conceptsets(self):
+    def conceptsets(self) -> typing.Dict[str, Conceptset]:
         """
         :returns: `dict` mapping ConceptSet IDs to `Conceptset` instances.
         """
@@ -166,7 +166,7 @@ class Concepticon(API):
             meta=md,
             values=to_dict(
                 read_dicts(values_path, schema=md['tableSchema']),
-                key=itemgetter('CONCEPTICON_ID')))
+                key=operator.itemgetter('CONCEPTICON_ID')))
 
     @lazyproperty
     def relations(self):
@@ -184,7 +184,7 @@ class Concepticon(API):
 
     @lazyproperty
     def frequencies(self):
-        D = defaultdict(int)
+        D = collections.defaultdict(int)
         for cl in self.conceptlists.values():
             for concept in cl.concepts.values():
                 if concept.concepticon_id:

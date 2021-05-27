@@ -35,10 +35,10 @@ def run(args):
         for check in CHECKS:
             print(termcolor.colored('Check: {0}'.format(check.__name__), attrs=['bold']))
             if args.verbose and check.__doc__:
-                print(check.__doc__)
+                print(check.__doc__)  # pragma: no cover
             try:
                 check(items, args)
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 print(termcolor.colored('{0}: {1}'.format(e.__class__.__name__, e), color='red'))
         print()
 
@@ -75,7 +75,7 @@ def matching_concepticon_gloss_and_id(items, args):
             if cid and cgloss:
                 cs = args.repos.conceptsets[cid]
                 if cs.gloss != cgloss:
-                    t.append([cid, cgloss, line] + id_number_gloss(item))
+                    t.append([cid, cgloss, line] + id_number_gloss(item))  # pragma: no cover
 
 
 def valid_concepticon_gloss(items, args):
@@ -88,7 +88,7 @@ def valid_concepticon_gloss(items, args):
         for line, item in items:
             cgloss = item.get(CS_GLOSS)
             if cgloss and cgloss not in valid:
-                t.append([cgloss, line] + id_number_gloss(item))
+                t.append([cgloss, line] + id_number_gloss(item))  # pragma: no cover
 
 
 def valid_concepticon_id(items, args):
@@ -98,7 +98,7 @@ def valid_concepticon_id(items, args):
         for line, item in items:
             cid = item.get(CS_ID)
             if cid and cid not in valid:
-                t.append([cid, line] + id_number_gloss(item))
+                t.append([cid, line] + id_number_gloss(item))  # pragma: no cover
 
 
 def provisional_concepticon_gloss(items, args):

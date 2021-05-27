@@ -1,8 +1,8 @@
 import re
-from collections import defaultdict, OrderedDict, Counter
-from functools import partial
-from operator import attrgetter
-from pathlib import Path
+import pathlib
+import operator
+import functools
+import collections
 
 from clldutils import jsonlib
 from csvw import dsv
@@ -13,18 +13,18 @@ __all__ = [
     'natural_sort', 'to_dict', 'SourcesCatalog', 'UnicodeWriter', 'visit',
     'load_conceptlist', 'write_conceptlist', 'read_dicts']
 
-REPOS_PATH = Path(pyconcepticon.__file__).parent.parent
-PKG_PATH = Path(pyconcepticon.__file__).parent
+REPOS_PATH = pathlib.Path(pyconcepticon.__file__).parent.parent
+PKG_PATH = pathlib.Path(pyconcepticon.__file__).parent
 ID_SEP_PATTERN = re.compile(r'[.,;]')
 PREFIX = 'CONCEPTICON'
 CS_GLOSS = PREFIX + '_GLOSS'
 CS_ID = PREFIX + '_ID'
 BIB_PATTERN = re.compile(':bib:(?P<id>[a-zA-Z0-9]+)')
 
-rewrite = partial(dsv.rewrite, delimiter='\t')
+rewrite = functools.partial(dsv.rewrite, delimiter='\t')
 
 
-def to_dict(iterobjects, key=attrgetter('id')):
+def to_dict(iterobjects, key=operator.attrgetter('id')):
     """
     Turns an iterable into an `OrderedDict` mapping unique keys to items.
 
@@ -32,7 +32,7 @@ def to_dict(iterobjects, key=attrgetter('id')):
     :param key: a callable which creates a key from an item.
     :returns: `OrderedDict`
     """
-    res, keys = OrderedDict(), Counter()
+    res, keys = collections.OrderedDict(), collections.Counter()
     for obj in iterobjects:
         k = key(obj)
         res[k] = obj
@@ -119,7 +119,7 @@ def load_conceptlist(idf):
     data = read_dicts(idf)
     if data:
         clist = dict(header=list(data[0].keys()), splits=[], mergers=[])
-        cidxs = defaultdict(list)
+        cidxs = collections.defaultdict(list)
 
         previous_item = None
         for item in data:
@@ -164,7 +164,7 @@ def write_conceptlist(clist, filename, header=False):
 
 class SourcesCatalog(object):
     def __init__(self, path):
-        self.path = Path(path)
+        self.path = pathlib.Path(path)
         self.items = jsonlib.load(self.path) if self.path.exists() else {}
 
     def __contains__(self, item):
@@ -178,14 +178,15 @@ class SourcesCatalog(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         jsonlib.dump(
-            OrderedDict([(k, OrderedDict([i for i in sorted(v.items())]))
-                         for k, v in sorted(self.items.items())]),
+            collections.OrderedDict(
+                [(k, collections.OrderedDict([i for i in sorted(v.items())]))
+                 for k, v in sorted(self.items.items())]),
             self.path,
             indent=4)
 
     def add(self, key, obj):
         bsid = obj.bitstreams[0].id
-        self.items[key] = OrderedDict([
+        self.items[key] = collections.OrderedDict([
             ('url', 'https://cdstar.shh.mpg.de/bitstreams/{0}/{1}'.format(obj.id, bsid)),
             ('objid', obj.id),
             ('original', bsid),

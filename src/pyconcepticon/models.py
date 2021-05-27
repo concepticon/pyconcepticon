@@ -1,9 +1,8 @@
 import re
+import pathlib
 import operator
-from collections import deque, defaultdict, Counter
-from pathlib import Path
-from operator import setitem
-from functools import partial
+import functools
+import collections
 
 import attr
 from clldutils.apilib import DataObject
@@ -132,7 +131,7 @@ class ConceptRelations(dict):
     Class handles relations between concepts.
     """
     def __init__(self, path, multiple=False):
-        rels = defaultdict(lambda: defaultdict(set))
+        rels = collections.defaultdict(lambda: collections.defaultdict(set))
         self.raw = list(read_dicts(path))
         for item in self.raw:
             if multiple:
@@ -162,7 +161,7 @@ class ConceptRelations(dict):
             "broader" and "narrower".
 
         """
-        queue = deque([(concept, 0)])
+        queue = collections.deque([(concept, 0)])
         while queue:
             current_concept, depth = queue.popleft()
             depth += 1
@@ -223,9 +222,9 @@ class Conceptlist(Bag):
                 if not md.exists():
                     md = ddir.joinpath('conceptlists', 'default' + MD_SUFFIX)
             else:
-                md = Path(__file__).parent / 'conceptlist-metadata.json'
+                md = pathlib.Path(__file__).parent / 'conceptlist-metadata.json'
         tg = TableGroup.from_file(md)
-        if isinstance(self._api, Path):
+        if isinstance(self._api, pathlib.Path):
             tg._fname = self._api.parent.joinpath(self._api.name + MD_SUFFIX)
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))
         return tg
@@ -236,7 +235,7 @@ class Conceptlist(Bag):
 
     @property
     def path(self):
-        if isinstance(self._api, Path):
+        if isinstance(self._api, pathlib.Path):
             return self._api
         return self._api.data_path('conceptlists', self.id + '.tsv')
 
@@ -258,7 +257,7 @@ class Conceptlist(Bag):
                 for k, v in item.items():
                     if k:
                         kl = k.lower()
-                        setitem(kw if kl in Concept.public_fields() else attributes, kl, v)
+                        operator.setitem(kw if kl in Concept.public_fields() else attributes, kl, v)
                 res.append(Concept(list=self, attributes=attributes, **kw))
         return to_dict(res)
 
@@ -269,7 +268,7 @@ class Conceptlist(Bag):
 
         @todo: uniqueness-check hier einbauen, siehe Funktion read_dicts
         """
-        path = Path(path)
+        path = pathlib.Path(path)
         assert path.exists()
         attrs = {f: keywords.get(f, '') for f in Conceptlist.public_fields()}
         attrs.update(
@@ -287,7 +286,8 @@ class Conceptlist(Bag):
         mapped_ratio = 0
         if concepts:
             mapped_ratio = int((len(mapped) / len(concepts)) * 100)
-        concepticon_ids = Counter([c.concepticon_id for c in concepts if c.concepticon_id])
+        concepticon_ids = collections.Counter(
+            [c.concepticon_id for c in concepts if c.concepticon_id])
         mergers = [(k, v) for k, v in concepticon_ids.items() if v > 1]
         return mapped, mapped_ratio, mergers
 
@@ -301,7 +301,7 @@ def compare_conceptlists(api, *conceptlists, **kw):
     The method takes concept relations into account.
     """
     search_depth = kw.pop('search_depth', 3)
-    commons = defaultdict(set)
+    commons = collections.defaultdict(set)
 
     # store all concepts along with their broader concepts
     for arg in conceptlists:
@@ -317,8 +317,8 @@ def compare_conceptlists(api, *conceptlists, **kw):
                 commons[c.concepticon_id].add((
                     clid, 0, c.concepticon_id, c.concepticon_gloss))
                 for rel, depth in [
-                    ('broader', partial(operator.add, 0)),
-                    ('narrower', partial(operator.sub, 0))
+                    ('broader', functools.partial(operator.add, 0)),
+                    ('narrower', functools.partial(operator.sub, 0))
                 ]:
                     for cn, d in api.relations.iter_related(
                             c.concepticon_id, rel, max_degree_of_separation=search_depth):
@@ -343,7 +343,7 @@ def compare_conceptlists(api, *conceptlists, **kw):
         if len(lists) > 1:
             # if one list makes MORE distinctions than the other, yield the
             # more refined list
-            listcheck = defaultdict(list)
+            listcheck = collections.defaultdict(list)
             for a, b, c, d in lists:
                 if b >= 0:
                     listcheck[a] += [(a, b, c, d)]
