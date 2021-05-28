@@ -17,6 +17,11 @@ def register(parser):
         help="substring in list ID for lists to consider - leave empty to consider all.",
     )
     parser.add_argument(
+        '--gloss',
+        default=False,
+        help="Pass a gloss to check if any unlinked concepts would be mapped to it.",
+    )
+    parser.add_argument(
         '--similarity-threshold',
         type=int,
         default=2,
@@ -33,8 +38,9 @@ def run(args):
                     key=lambda p: int(re.match('([0-9]+)', p.number).groups()[0])):
                 if not concept.concepticon_id:
                     notlinked.append(concept)
+    to = [('1', args.gloss)] if args.gloss else None
     for j, matches in enumerate(args.repos.lookup(
-            [c.label for c in notlinked], full_search=not args.full)):
+            [c.label for c in notlinked], full_search=not args.full, to=to)):
         if matches:
             candidates = sorted(matches, key=lambda x: x[-1])
             cid, cgl = candidates[0][2:4]
