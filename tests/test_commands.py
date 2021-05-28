@@ -66,7 +66,7 @@ def test_upload_sources(_main, mocker, tmprepos):
 
 @pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_notlinked(_main, capsys):
-    _main('notlinked')
+    _main('notlinked --full')
     out, _ = capsys.readouterr()
     assert 'Sun-1991-1004-275' in out
 

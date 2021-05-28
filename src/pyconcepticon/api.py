@@ -273,12 +273,14 @@ class Concepticon(API):
         if out is None:
             print(writer.read().decode('utf-8'))
 
-    def lookup(self, entries, full_search=False, similarity_level=5, language='en'):
+    def lookup(self, entries, full_search=False, similarity_level=5, language='en', mincsid=None):
         """
         :returns: `generator` of tuples (searchterm, concepticon_id, concepticon_gloss, \
         similarity).
         """
         to = self._get_map_for_language(language, None)
+        if mincsid:
+            to = [t for t in to if int(t[0]) >= mincsid]
         tox = [i[1] for i in to]
         cfunc = concept_map2 if full_search else concept_map
         cmap = cfunc(
