@@ -21,7 +21,7 @@ def zenodo_json(citation, version, editors):
         ("description", "<p>{}</p>".format(html.escape(citation))),
         ("alternate_identifiers",
          [{"scheme": "url", "identifier": "https://concepticon.clld.org"}]),
-        ("title", "CLLD Concepticon. Version {}".format(version)),
+        ("title", "CLLD Concepticon {}".format(version.replace('v', ''))),
         ("access_right", "open"),
         ("license", {"id": "CC-BY-4.0"}),
         ("keywords", ["linguistics"]),
