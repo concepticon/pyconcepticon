@@ -7,11 +7,11 @@ import collections
 
 
 import pybtex.database
-from clldutils.path import readlines
 from clldutils import jsonlib
 from clldutils.misc import lazyproperty
 from clldutils.apilib import API
 from clldutils.source import Source
+from clldutils.markup import iter_markdown_tables
 import cldfcatalog
 
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
@@ -60,25 +60,12 @@ class Concepticon(API):
     @lazyproperty
     def editors(self) -> typing.List[Editor]:
         res = []
-        in_editors, in_table = False, False
-        for line in readlines(self.path('CONTRIBUTORS.md'), strip=True):
-            if in_editors and line.startswith('#'):
-                in_editors, in_table = False, False
-                continue
-
-            if line.endswith('# Editors'):
-                in_editors = True
-                continue
-
-            if in_editors and line.startswith('--- '):
-                in_table = True
-                continue
-
-            if in_table and '|' in line:
-                period, _, name = line.partition('|')
-                period = period.strip().partition('-')
-                res.append(
-                    Editor(name.strip(), period[0].strip(), period[2].strip() or None))
+        header, rows = next(
+            iter_markdown_tables(self.path('CONTRIBUTORS.md').read_text(encoding='utf8')))
+        for (period, name) in rows:
+            start, to_, end = period.strip().partition('-')
+            start, end = start.strip(), end.strip()
+            res.append(Editor(name.strip(), start, start if not to_ else end or None))
         return res
 
     @lazyproperty
@@ -426,6 +413,8 @@ class Concepticon(API):
         broken_cls = []
 
         for cl in self.conceptlists.values():
+            if clids and cl.id not in clids:
+                continue  # pragma: no cover
             #
             # Check consistency between the csvw metadata and the column names in the list.
             #
