@@ -1,11 +1,9 @@
 import shlex
 import shutil
 import logging
-import pathlib
 import collections
 
 import pytest
-from clldutils.path import copy
 from clldutils.misc import nfilter
 
 from pyconcepticon.util import read_all
@@ -95,7 +93,7 @@ def test_create_metadata(tmprepos, _main):
 
 def test_check(api, capsys, tmp_path, _main):
     test = tmp_path / 'Sun-1991-1004.tsv'
-    copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), test)
+    shutil.copy(api.repos.joinpath('concepticondata/conceptlists/Sun-1991-1004.tsv'), test)
     _main('check', str(test))
     out, err = capsys.readouterr()
     assert 'Sun-1991-1004-2 ' not in out
@@ -132,12 +130,12 @@ def test_link(fixturedir, tmp_path, capsys, _main):
         return len(nfilter([getattr(i, attr, None) for i in read_all(str(p))]))
 
     test = tmp_path / 'test.tsv'
-    copy(fixturedir.joinpath('conceptlist.tsv'), test)
+    shutil.copy(fixturedir.joinpath('conceptlist.tsv'), test)
     assert nattr(test, 'CONCEPTICON_GLOSS') == 0
     _main('link', str(test))
     assert nattr(test, 'CONCEPTICON_GLOSS') == 1
 
-    copy(fixturedir.joinpath('conceptlist2.tsv'), test)
+    shutil.copy(fixturedir.joinpath('conceptlist2.tsv'), test)
     _main('link', str(test))
     out, err = capsys.readouterr()
     assert 'unknown CONCEPTICON_GLOSS' in out
