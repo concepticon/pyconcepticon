@@ -124,6 +124,20 @@ def parse_gloss(gloss, language='en'):
             'un': 'noun',
             'une': 'noun'}
         prefixes = ['il', 'est']
+    elif language == "es":
+        pos_markers = {
+            "el": "noun",
+            "la": "noun",
+            "los": "noun",
+            "mi": "noun",
+            "un": "noun",
+            "una": "noun",
+            "unos": "noun",
+            "las": "noun",
+            "su": "noun",
+                }
+        prefixes = ["lo", "les", "le"]
+
     else:
         pos_markers = {}
         prefixes = []
