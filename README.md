@@ -124,7 +124,7 @@ This yields an output of 93 lines, which look as follows:
  72  SMOKE (EXHAUST)         [778 ]
 ```
 
-The output can interpreted as follows: The first number shows the number in the intersection of items 
+The output can be interpreted as follows: The first number shows the number in the intersection of items 
 (alphabetically ordered, following the Concepticon gloss). The Concepticon gloss is shown as a next item. 
 If it is preceded by an asterisk, this means that the mapping was not complete, as it involves concept relations. 
 The alternative concept sets are then listed in the end of the line. 
