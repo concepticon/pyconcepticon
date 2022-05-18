@@ -135,7 +135,7 @@ def parse_gloss(gloss, language='en'):
             "unos": "noun",
             "las": "noun",
             "su": "noun",
-                }
+        }
         prefixes = ["lo", "les", "le"]
 
     else:
