@@ -7,6 +7,8 @@ import collections
 import attr
 from clldutils.apilib import DataObject
 from clldutils.misc import lazyproperty
+from clldutils.jsonlib import load
+import csvw
 from csvw.metadata import TableGroup, Link
 from csvw.dsv import reader
 
@@ -16,6 +18,7 @@ __all__ = [
     'Languoid', 'Concept', 'Conceptlist', 'ConceptRelations', 'Conceptset', 'Metadata',
     'REF_PATTERN', 'compare_conceptlists', 'MD_SUFFIX']
 
+CSVW3 = int(csvw.__version__.split('.')[0]) > 2
 CONCEPTLIST_ID_PATTERN = re.compile(
     '(?P<author>[A-Za-z]+)-(?P<year>[0-9]+)-(?P<items>[0-9]+)(?P<letter>[a-z]?)$')
 REF_PATTERN = re.compile(':ref:(?P<id>[a-zA-Z0-9-]+)')
@@ -223,7 +226,13 @@ class Conceptlist(Bag):
                     md = ddir.joinpath('conceptlists', 'default' + MD_SUFFIX)
             else:
                 md = pathlib.Path(__file__).parent / 'conceptlist-metadata.json'
-        tg = TableGroup.from_file(md)
+        if CSVW3:
+            metadata = load(md)
+            metadata['tables'][0]['url'] = 'u'
+            tg = TableGroup.from_file(md, data=metadata)
+        else:
+            tg = TableGroup.from_file(md)
+
         if isinstance(self._api, pathlib.Path):
             tg._fname = self._api.parent.joinpath(self._api.name + MD_SUFFIX)
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))

@@ -486,6 +486,7 @@ class Concepticon(API):
             except TypeError as e:  # pragma: no cover
                 broken_cls.append(cl.id)
                 error(str(e), cl.id)
+                raise
 
         sameas = {}
         glosses = set()

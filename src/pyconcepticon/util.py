@@ -187,7 +187,7 @@ class SourcesCatalog(object):
     def add(self, key, obj):
         bsid = obj.bitstreams[0].id
         self.items[key] = collections.OrderedDict([
-            ('url', 'https://cdstar.shh.mpg.de/bitstreams/{0}/{1}'.format(obj.id, bsid)),
+            ('url', 'https://cdstar.eva.mpg.de/bitstreams/{0}/{1}'.format(obj.id, bsid)),
             ('objid', obj.id),
             ('original', bsid),
             ('size', obj.bitstreams[0].size),
