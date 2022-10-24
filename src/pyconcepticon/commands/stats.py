@@ -12,7 +12,6 @@ from pyconcepticon.cli_util import readme
 def run(args):
     cls = args.repos.conceptlists.values()
     readme_conceptlists(args.repos, cls, args)
-    readme_concept_list_meta(args.repos)
     readme_concepticondata(args.repos, cls)
 
 
@@ -25,20 +24,6 @@ def readme_conceptlists(api, cls, args):
     readme(
         api.data_path("conceptlists"),
         "# Concept Lists\n\n{0}".format(table.render(verbose=True, sortkey=operator.itemgetter(0))),
-    )
-
-
-def readme_concept_list_meta(api):
-    """Writes statistics on metadata to readme."""
-    txt = "# Basic Statistics on Metadata\n\n{0}"
-    cnc = len(api.conceptsets)
-    table = Table("provider", "ID", "# concept sets", "% coverage")
-    for meta in api.metadata.values():
-        n = len(meta.values)
-        table.append([meta.meta.get("dc:title"), meta.id, n, (n / cnc) * 100])
-    readme(
-        api.data_path("concept_set_meta"),
-        txt.format(table.render(sortkey=operator.itemgetter(1), reverse=True, condensed=False)),
     )
 
 
