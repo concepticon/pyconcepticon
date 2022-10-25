@@ -1,6 +1,7 @@
 import re
 import pathlib
 import operator
+import warnings
 import functools
 import collections
 
@@ -23,6 +24,7 @@ CONCEPTLIST_ID_PATTERN = re.compile(
     '(?P<author>[A-Za-z]+)-(?P<year>[0-9]+)-(?P<items>[0-9]+)(?P<letter>[a-z]?)$')
 REF_PATTERN = re.compile(':ref:(?P<id>[a-zA-Z0-9-]+)')
 MD_SUFFIX = '-metadata.json'
+warnings.filterwarnings('ignore', category=UserWarning, module='csvw.metadata')
 
 
 @attr.s

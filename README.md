@@ -3,7 +3,6 @@
 Tooling to access and curate [Concepticon data](https://github.com/concepticon/concepticon-data).
 
 [![Build Status](https://github.com/concepticon/pyconcepticon/workflows/tests/badge.svg)](https://github.com/concepticon/pyconcepticon/actions?query=workflow%3Atests)
-[![codecov](https://codecov.io/gh/concepticon/pyconcepticon/branch/master/graph/badge.svg)](https://codecov.io/gh/concepticon/pyconcepticon)
 [![PyPI](https://img.shields.io/pypi/v/pyconcepticon.svg)](https://pypi.org/project/pyconcepticon)
 
 
@@ -14,7 +13,7 @@ Tooling to access and curate [Concepticon data](https://github.com/concepticon/c
 pip install pyconcepticon
 ```
 
-Note that `pyconcepticon` requires a clone or export of the [concepticon data repository](https://github.com/clld/concepticon-data).
+Note that `pyconcepticon` requires a clone or export of the [concepticon data repository](https://github.com/concepticon/concepticon-data).
 
 
 ## Usage
