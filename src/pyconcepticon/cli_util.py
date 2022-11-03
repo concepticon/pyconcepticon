@@ -5,12 +5,6 @@ from clldutils.clilib import ParserError
 from pyconcepticon.models import Conceptlist
 
 
-def format_set_operation(res):
-    frmt = "{0:3} {1:1}{2:" + str(max(len(r[2]) for r in res)) + "} [{3:4}] {4}"
-    for i, line in enumerate(res or []):
-        print(frmt.format(i + 1, line[0], line[2], line[1], line[3]))
-
-
 def readme(outdir, text):
     outdir.joinpath("README.md").write_text(
         "\n".join(text) if isinstance(text, list) else text, encoding="utf8")

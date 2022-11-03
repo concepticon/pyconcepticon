@@ -85,51 +85,31 @@ available commands:
 ```
 
 To learn about individual subcommands run `concepticon COMMAND -h`, e.g.
-```shell script
-$ concepticon intersection -h
-usage: concepticon intersection [-h] CONCEPTLIST [CONCEPTLIST ...]
+```shell
+$ concepticon lookup -h
+usage: concepticon lookup [-h]
+                          [--format {fancy_grid,fancy_outline,github,grid,html,jira,latex,latex_booktabs,latex_longtable,latex_raw,mediawiki,moinmoin,orgtbl,pipe,plain,presto,pretty,psql,rst,simple,textile,tsv,unsafehtml,youtrack}]
+                          [--similarity SIMILARITY] [--full-search]
+                          [--language LANGUAGE]
+                          GLOSS [GLOSS ...]
 
-Compute the intersection of concepts for a number of concept lists.
-
-Notes
------
-This takes concept relations into account by searching for each concept
-set for broader concept sets in the depth of two edges on the network. If
-one concept A in one list is broader than concept B in another list, the
-concept A will be retained, and this will be marked in output. If two lists
-share the same broader concept, they will also be retained, but only, if
-none of the narrower concepts match. As a default we use a depth of 2 for
-the search.
+Look up the specified glosses in Concepticon.
 
 positional arguments:
-  CONCEPTLIST  Path to (or ID of) concept list in TSV format
+  GLOSS
 
 optional arguments:
-  -h, --help   show this help message and exit
+  -h, --help            show this help message and exit
+  --format {fancy_grid,fancy_outline,github,grid,html,jira,latex,latex_booktabs,latex_longtable,latex_raw,mediawiki,moinmoin,orgtbl,pipe,plain,presto,pretty,psql,rst,simple,textile,tsv,unsafehtml,youtrack}
+                        Format of tabular output. (default: simple)
+  --similarity SIMILARITY
+                        specify level of similarity for concept mapping
+                        (default: 5)
+  --full-search         select between approximate search (default) and full
+                        search (default: False)
+  --language LANGUAGE   specify your desired language for mapping (default:
+                        en)
 ```
-
-An example of the intersection between two lists looks as follows:
-
-```shell script
-$ concepticon --repos=clld-concepticon-data-41d2bf0 intersection Swadesh-1955-100 Swadesh-1952-200
-```
-
-This yields an output of 93 lines, which look as follows:
-
-```shell
- 69  SKIN                    [763 ] SKIN (HUMAN) (1, Swadesh-1952-200)
- 70  SLEEP                   [1585]
- 71  SMALL                   [1246]
- 72  SMOKE (EXHAUST)         [778 ]
-```
-
-The output can be interpreted as follows: The first number shows the number in the intersection of items 
-(alphabetically ordered, following the Concepticon gloss). The Concepticon gloss is shown as a next item. 
-If it is preceded by an asterisk, this means that the mapping was not complete, as it involves concept relations. 
-The alternative concept sets are then listed in the end of the line. 
-The number in squared brackets indicates the Concepticon concept set ID.
-
-You can use the same technique with the command "union", to obtain the union of two concept lists.
 
 To create a user interface which allows you to explore concepticon concepts in the browser, run
 ```shell script
@@ -139,7 +119,7 @@ $ concepticon --repos=clld-concepticon-data-41d2bf0 app
 
 ## Configuration
 
-Python API as well as CLI can lookup the location of the data from a
+The Python API as well as the CLI can lookup the location of the data from a
 [`cldfcatalog` config file](https://github.com/cldf/cldfcatalog/#configuration), under the key `concepticon`.
 
 Such a config file (and the repository clone) can be created automatically,

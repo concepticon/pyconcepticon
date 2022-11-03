@@ -19,8 +19,7 @@ from pyconcepticon.glosses import concept_map, concept_map2
 
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
-    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset,
-    REF_PATTERN, compare_conceptlists, MD_SUFFIX,
+    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset, REF_PATTERN, MD_SUFFIX,
 )
 
 Editor = collections.namedtuple('Editor', ['name', 'start', 'end'])
@@ -270,13 +269,12 @@ class Concepticon(API):
             to=None,
     ):
         """
-        :returns: `generator` of tuples (searchterm, concepticon_id, concepticon_gloss, \
-        similarity).
+        :returns: `generator` of tuples (searchterm, concepticon_id, concepticon_gloss, similarity).
         """
         if to is None:
-            to = self._get_map_for_language(language, None)
-            if mincsid:
-                to = [t for t in to if int(t[0]) >= mincsid]
+            to = [
+                t for t in self._get_map_for_language(language, None)
+                if mincsid is None or (int(t[0]) >= mincsid)]
         tox = [i[1] for i in to]
         cfunc = concept_map2 if full_search else concept_map
         cmap = cfunc(
@@ -519,26 +517,3 @@ class Concepticon(API):
                         concept.concepticon_id, concept.id), cl.id)
 
         return exit()
-
-    def _set_operation(self, type_, *clids, **kw):
-        assert type_ in ['union', 'intersection']
-        for c, lists in compare_conceptlists(self, *clids, **kw):
-            if type_ == 'union' \
-                    or len(set([x[0] for x in lists if x[1] >= 0])) == len(clids):
-                # For union, take all conceptsets in any of the lists, for intersection only
-                # conceptsets which appear in all lists.
-                marker = '*' if not len([0 for x in lists if x[1] == 0]) else ' '
-                marker += '<' if len([x for x in lists]) < len(clids) else ' '
-                yield (
-                    marker,
-                    c,
-                    self.conceptsets[c].gloss,
-                    ', '.join(
-                        ['{0[3]} ({0[1]}, {0[0]})'.format(x) for x in
-                         lists if x[1] != 0]))
-
-    def union(self, *clids, **kw):
-        return list(self._set_operation('union', *clids, **kw))
-
-    def intersection(self, *clids, **kw):
-        return list(self._set_operation('intersection', *clids, **kw))

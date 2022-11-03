@@ -155,20 +155,6 @@ def test_attributes(_main, capsys):
     assert 'Occurrences' in out
 
 
-@pytest.mark.filterwarnings("ignore:Unspecified column")
-def test_union(capsys, _main):
-    _main('union','Perrin-2010-110', 'Sun-1991-1004' )
-    out, err = capsys.readouterr()
-    assert 920 == len(out.split('\n'))
-
-
-@pytest.mark.filterwarnings("ignore:Unspecified column")
-def test_intersection(capsys, _main):
-    _main('intersection','Perrin-2010-110', 'Sun-1991-1004' )
-    out, err = capsys.readouterr()
-    assert 69 == len(out.split('\n'))
-
-
 def test_lookup(capsys, _main):
     _main('lookup', '--full-search', '--language', 'en', 'sky')
     out, err = capsys.readouterr()
