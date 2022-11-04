@@ -37,7 +37,7 @@ def run(args):
             args.version = args.version[1:]
     current_editors = [
         e for e in args.repos.editors
-        if ((not e.end) or (int(e.end) >= args.year)) and int(e.start) <= args.year]
+        if (not e.end) and int(e.start) <= args.year]
     editor_names = []
     for e in current_editors:
         name = HumanName(e.name)
