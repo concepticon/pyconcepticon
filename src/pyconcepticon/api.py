@@ -426,7 +426,7 @@ class Concepticon(API):
                 if col.titles:
                     c = col.titles.getfirst()
                     if c in cols_in_md:  # pragma: no cover
-                        error('Duplicate name ot title in table schema: {0}'.format(c), cl.id)
+                        error('Duplicate name or title in table schema: {0}'.format(c), cl.id)
                     cnames.append(c)
                 cols_in_md.extend(cnames)
                 if not any(name in cl.cols_in_list for name in cnames):
