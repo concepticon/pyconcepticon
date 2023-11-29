@@ -17,6 +17,8 @@ from clldutils.clilib import Table, add_format
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 from pyconcepticon.util import read_dicts, CS_ID, CS_GLOSS
 
+import json
+
 
 def register(parser):
     add_conceptlist(parser, multiple=True)
@@ -143,6 +145,54 @@ def unique_number(items, args):
     _unique(items, args, 'NUMBER')
 
 
+def good_graph(items, args):
+    cids = {b["ID"]: b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
+    target_id_problems, target_name_problems = [], []
+    source_id_problems, source_name_problems = [], []
+    link_id_problems, link_name_problems = [], []
+
+    for cid, concept in items:
+        targets = concept.get("TARGET_CONCEPTS")
+        sources = concept.get("SOURCE_CONCEPTS")
+        links = concept.get("LINKED_CONCEPTS")
+        if targets:
+            targets = json.loads(targets)
+            for target in targets:
+                if not target.get("id") or not target.get("id") in cids:
+                    target_id_problems.append([cid] + id_number_gloss(concept))
+                if not target.get("name") or not target.get("name") in cids.values():
+                    target_name_problems.append([cid] + id_number_gloss(concept))
+        if sources:
+            sources = json.loads(sources)
+            for source in sources:
+                if not source.get("id") or not source.get("id") in cids:
+                    source_id_problems.append([cid] + id_number_gloss(concept))
+                if not source.get("name") or not source.get("name") in cids.values():
+                    source_name_problems.append([cid] + id_number_gloss(concept))
+        if links:
+            links = json.loads(links)
+            for link in links:
+                if not link.get("id") or not link.get("id") in cids:
+                    link_id_problems.append([cid] + id_number_gloss(concept))
+                if not link.get("name") or not link.get("name") in cids.values():
+                    link_name_problems.append([cid] + id_number_gloss(concept))
+
+
+    with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
+        for problem in target_id_problems:
+            t.append(["target id missing in graph"] + problem)
+        for problem in target_name_problems:
+            t.append(["target name missing in graph"] + problem)
+        for problem in source_id_problems:
+            t.append(["source id missing in graph"] + problem)
+        for problem in source_name_problems:
+            t.append(["source name missing in graph"] + problem)
+        for problem in link_id_problems:
+            t.append(["link id missing in graph"] + problem)
+        for problem in link_name_problems:
+            t.append(["link name missing in graph"] + problem)
+
+
 CHECKS = [
     unique_concepticon_gloss,
     unique_id,
@@ -150,4 +200,5 @@ CHECKS = [
     matching_concepticon_gloss_and_id,
     valid_concepticon_gloss,
     valid_concepticon_id,
+    good_graph
 ]
