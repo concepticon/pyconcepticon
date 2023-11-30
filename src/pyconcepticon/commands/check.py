@@ -146,51 +146,34 @@ def unique_number(items, args):
 
 
 def good_graph(items, args):
-    cids = {b["ID"]: b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
-    target_id_problems, target_name_problems = [], []
-    source_id_problems, source_name_problems = [], []
-    link_id_problems, link_name_problems = [], []
+    cids = {
+            "id": {b["ID"] for a, b in items}, 
+            "name": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
+            }
+    # name suffixes for columns
+    names = ["TARGET", "SOURCE", "LINKED"]
+    all_problems = collections.OrderedDict({
+        "id": {name: [] for name in names},
+        "name": {name: [] for name in names}
+        })
 
     for cid, concept in items:
-        targets = concept.get("TARGET_CONCEPTS")
-        sources = concept.get("SOURCE_CONCEPTS")
-        links = concept.get("LINKED_CONCEPTS")
-        if targets:
-            targets = json.loads(targets)
-            for target in targets:
-                if not target.get("id") or not target.get("id") in cids:
-                    target_id_problems.append([cid] + id_number_gloss(concept))
-                if not target.get("name") or not target.get("name") in cids.values():
-                    target_name_problems.append([cid] + id_number_gloss(concept))
-        if sources:
-            sources = json.loads(sources)
-            for source in sources:
-                if not source.get("id") or not source.get("id") in cids:
-                    source_id_problems.append([cid] + id_number_gloss(concept))
-                if not source.get("name") or not source.get("name") in cids.values():
-                    source_name_problems.append([cid] + id_number_gloss(concept))
-        if links:
-            links = json.loads(links)
-            for link in links:
-                if not link.get("id") or not link.get("id") in cids:
-                    link_id_problems.append([cid] + id_number_gloss(concept))
-                if not link.get("name") or not link.get("name") in cids.values():
-                    link_name_problems.append([cid] + id_number_gloss(concept))
-
+        for name in names:
+            nodes_ = concept.get(name + "_CONCEPTS")
+            if nodes_:
+                nodes = json.loads(nodes_)
+                for node in nodes:
+                    for itm in ["id", "name"]:
+                        if not node.get(itm) or not node.get(itm) in cids[itm]:
+                            all_problems[itm][name].append(
+                                    [cid] + id_number_gloss(concept))
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
-        for problem in target_id_problems:
-            t.append(["target id missing in graph"] + problem)
-        for problem in target_name_problems:
-            t.append(["target name missing in graph"] + problem)
-        for problem in source_id_problems:
-            t.append(["source id missing in graph"] + problem)
-        for problem in source_name_problems:
-            t.append(["source name missing in graph"] + problem)
-        for problem in link_id_problems:
-            t.append(["link id missing in graph"] + problem)
-        for problem in link_name_problems:
-            t.append(["link name missing in graph"] + problem)
+        for item, problems in all_problems.items():
+            for name in names:
+                for problem in problems[name]:
+                    t.append(["Attribute "+ item + " in column " + name + 
+                              "_CONCEPTS does not occur in concept list"] + problem)
 
 
 CHECKS = [
