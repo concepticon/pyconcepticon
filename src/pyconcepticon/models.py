@@ -160,10 +160,9 @@ class ConceptRelations(dict):
         """
         Search for concept relations of a given concept.
 
-        :param search_depth: maximal depth of search
-        :param relation: the concept relation to be searched (currently only
-            "broader" and "narrower".
-
+        :param concept: CONCEPTICON_ID for which to perform the search
+        :param max_degree_of_separation: maximal depth of search
+        :param relation: the concept relation to be searched (currently only "broader" and "narrower")
         """
         queue = collections.deque([(concept, 0)])
         while queue:
@@ -172,7 +171,7 @@ class ConceptRelations(dict):
             for target, rels in self.get(current_concept, {}).items():
                 if (relation in rels or relation == rels) and depth <= max_degree_of_separation:
                     queue.append((target, depth))
-                    yield (target, depth)
+                    yield target, depth
 
 
 @attr.s
