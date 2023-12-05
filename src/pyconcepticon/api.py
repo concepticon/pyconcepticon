@@ -1,26 +1,24 @@
+import collections
+import operator
+import pathlib
 import re
 import typing
-import pathlib
-import operator
 import warnings
-import collections
+from functools import cached_property
 
-
+import cldfcatalog
 import pybtex.database
 from clldutils import jsonlib
-from clldutils.misc import lazyproperty
 from clldutils.apilib import API
-from clldutils.source import Source
 from clldutils.markup import iter_markdown_tables
-import cldfcatalog
+from clldutils.source import Source
 
-from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 from pyconcepticon.glosses import concept_map, concept_map2
-
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
     Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset, REF_PATTERN, MD_SUFFIX,
 )
+from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
 
 Editor = collections.namedtuple('Editor', ['name', 'start', 'end'])
 
@@ -56,7 +54,7 @@ class Concepticon(API):
         """
         return self.path('concepticondata', *comps)
 
-    @lazyproperty
+    @cached_property
     def editors(self) -> typing.List[Editor]:
         res = []
         header, rows = next(
@@ -67,7 +65,7 @@ class Concepticon(API):
             res.append(Editor(name.strip(), start, start if not to_ else end or None))
         return res
 
-    @lazyproperty
+    @cached_property
     def vocabularies(self) -> typing.Dict[str, dict]:
         """
         Provide access to a `dict` of controlled vocabularies.
@@ -83,11 +81,11 @@ class Concepticon(API):
     def bibfile(self) -> pathlib.Path:
         return self.data_path('references', 'references.bib')
 
-    @lazyproperty
+    @cached_property
     def sources(self) -> dict:
         return jsonlib.load(self.data_path('sources', 'cdstar.json'))
 
-    @lazyproperty
+    @cached_property
     def retirements(self):
         return jsonlib.load(
             self.data_path('retired.json'), object_pairs_hook=collections.OrderedDict)
@@ -102,7 +100,7 @@ class Concepticon(API):
         self.retirements[type_].append(obj)
         jsonlib.dump(self.retirements, self.data_path('retired.json'), indent=2)
 
-    @lazyproperty
+    @cached_property
     def bibliography(self) -> typing.Dict[str, Source]:
         """
         :returns: `dict` mapping BibTeX IDs to `Reference` instances.
@@ -111,7 +109,7 @@ class Concepticon(API):
             Source.from_entry(key, entry) for key, entry in pybtex.database.parse_string(
                 self.bibfile.read_text(encoding='utf8'), bib_format='bibtex').entries.items())
 
-    @lazyproperty
+    @cached_property
     def conceptsets(self) -> typing.Dict[str, Conceptset]:
         """
         :returns: `dict` mapping ConceptSet IDs to `Conceptset` instances.
@@ -120,11 +118,11 @@ class Concepticon(API):
             Conceptset(api=self, **lowercase(d))
             for d in read_dicts(self.data_path('concepticon.tsv')))
 
-    @lazyproperty
+    @cached_property
     def conceptlists_dicts(self):
         return read_dicts(self.data_path('conceptlists.tsv'))
 
-    @lazyproperty
+    @cached_property
     def conceptlists(self):
         """
         :returns: `dict` mapping ConceptList IDs to `Conceptlist` instances.
@@ -133,7 +131,7 @@ class Concepticon(API):
         """
         return to_dict(Conceptlist(api=self, **lowercase(d)) for d in self.conceptlists_dicts)
 
-    @lazyproperty
+    @cached_property
     def metadata(self):
         """
         :returns: `dict` mapping metadata provider IDs to `Metadata` instances.
@@ -154,21 +152,21 @@ class Concepticon(API):
                 read_dicts(values_path, schema=md['tableSchema']),
                 key=operator.itemgetter('CONCEPTICON_ID')))
 
-    @lazyproperty
+    @cached_property
     def relations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'))
 
-    @lazyproperty
+    @cached_property
     def multirelations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'), multiple=True)
 
-    @lazyproperty
+    @cached_property
     def frequencies(self):
         D = collections.defaultdict(int)
         for cl in self.conceptlists.values():

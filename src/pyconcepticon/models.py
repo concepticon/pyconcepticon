@@ -1,16 +1,16 @@
-import re
-import pathlib
-import operator
-import warnings
 import collections
+import operator
+import pathlib
+import re
+import warnings
+from functools import cached_property
 
 import attr
-from clldutils.apilib import DataObject
-from clldutils.misc import lazyproperty
-from clldutils.jsonlib import load
 import csvw
-from csvw.metadata import TableGroup, Link
+from clldutils.apilib import DataObject
+from clldutils.jsonlib import load
 from csvw.dsv import reader
+from csvw.metadata import TableGroup, Link
 
 from pyconcepticon.util import split, split_ids, read_dicts, to_dict
 
@@ -95,11 +95,11 @@ class Conceptset(Bag):
         if self._api and self.replacement_id:
             return self._api.conceptsets[self.replacement_id]
 
-    @lazyproperty
+    @cached_property
     def relations(self):
         return self._api.relations.get(self.id, {}) if self._api else {}
 
-    @lazyproperty
+    @cached_property
     def concepts(self):
         res = []
         if self._api:
@@ -191,7 +191,7 @@ class Concept(Bag):
     def label(self):
         return self.gloss or self.english
 
-    @lazyproperty
+    @cached_property
     def cols(self):
         return Concept.public_fields() + list(self.attributes.keys())
 
@@ -215,7 +215,7 @@ class Conceptlist(Bag):
     alias = attr.ib(converter=lambda s: [] if s is None else split(s))
     local = attr.ib(default=False)
 
-    @lazyproperty
+    @cached_property
     def tg(self):
         md = self.path.parent.joinpath(self.path.name + MD_SUFFIX)
         if not md.exists():
@@ -239,7 +239,7 @@ class Conceptlist(Bag):
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))
         return tg
 
-    @lazyproperty
+    @cached_property
     def metadata(self):
         return self.tg.tables[0]
 
@@ -249,16 +249,16 @@ class Conceptlist(Bag):
             return self._api
         return self._api.data_path('conceptlists', self.id + '.tsv')
 
-    @lazyproperty
+    @cached_property
     def cols_in_list(self):
         return list(next(reader(self.path, dicts=True, delimiter='\t')).keys())
 
-    @lazyproperty
+    @cached_property
     def attributes(self):
         return [c.name for c in self.metadata.tableSchema.columns
                 if c.name.lower() not in Concept.public_fields()]
 
-    @lazyproperty
+    @cached_property
     def concepts(self):
         res = []
         if self.path.exists():
