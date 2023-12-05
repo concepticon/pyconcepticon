@@ -3,8 +3,7 @@ Module provides functions for the handling of concept glosses in linguistic data
 """
 import re
 from collections import defaultdict
-
-from clldutils.misc import lazyproperty
+from functools import cached_property
 
 import attr
 
@@ -35,7 +34,7 @@ class Gloss(object):
 
     frequency = attr.ib(default=0)
 
-    @lazyproperty
+    @cached_property
     def tokens(self):
         return ' '.join(s for s in self.gloss.split() if s not in ['or'])
 
