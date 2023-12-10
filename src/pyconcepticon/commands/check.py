@@ -147,14 +147,14 @@ def unique_number(items, args):
 
 def good_graph(items, args):
     cids = {
-            "id": {b["ID"] for a, b in items}, 
-            "name": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
+            "ID": {b["ID"] for a, b in items}, 
+            "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
             }
     # name suffixes for columns
     names = ["TARGET", "SOURCE", "LINKED"]
     all_problems = collections.OrderedDict({
-        "id": {name: [] for name in names},
-        "name": {name: [] for name in names}
+        "ID": {name: [] for name in names},
+        "NAME": {name: [] for name in names}
         })
 
     for cid, concept in items:
@@ -163,7 +163,7 @@ def good_graph(items, args):
             if nodes_:
                 nodes = json.loads(nodes_)
                 for node in nodes:
-                    for itm in ["id", "name"]:
+                    for itm in ["ID", "NAME"]:
                         if not node.get(itm) or not node.get(itm) in cids[itm]:
                             all_problems[itm][name].append(
                                     [cid] + id_number_gloss(concept))
