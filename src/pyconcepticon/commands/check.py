@@ -147,15 +147,14 @@ def unique_number(items, args):
 
 def good_graph(items, args):
     cids = {
-            "ID": {b["ID"] for a, b in items}, 
-            "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
-            }
+        "ID": {b["ID"] for a, b in items},
+        "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}}
     # name suffixes for columns
     names = ["TARGET", "SOURCE", "LINKED"]
     all_problems = collections.OrderedDict({
         "ID": {name: [] for name in names},
         "NAME": {name: [] for name in names}
-        })
+    })
 
     for cid, concept in items:
         for name in names:
@@ -165,15 +164,17 @@ def good_graph(items, args):
                 for node in nodes:
                     for itm in ["ID", "NAME"]:
                         if not node.get(itm) or not node.get(itm) in cids[itm]:
-                            all_problems[itm][name].append(
-                                    [cid] + id_number_gloss(concept))
+                            all_problems[itm][name].append([cid] + id_number_gloss(concept))
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for item, problems in all_problems.items():
             for name in names:
                 for problem in problems[name]:
-                    t.append(["Attribute "+ item + " in column " + name + 
-                              "_CONCEPTS does not occur in concept list"] + problem)
+                    problem.insert(
+                        0,
+                        "Attribute {} in column {}_CONCEPTS does not occur in concept list".format(
+                            item, name))
+                    t.append(problem)
 
 
 CHECKS = [

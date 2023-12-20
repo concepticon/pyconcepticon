@@ -162,7 +162,8 @@ class ConceptRelations(dict):
 
         :param concept: CONCEPTICON_ID for which to perform the search
         :param max_degree_of_separation: maximal depth of search
-        :param relation: the concept relation to be searched (currently only "broader" and "narrower")
+        :param relation: the concept relation to be searched (currently only "broader" and \
+        "narrower")
         """
         queue = collections.deque([(concept, 0)])
         while queue:

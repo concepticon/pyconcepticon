@@ -54,6 +54,13 @@ def test_rename(capsys, _main, tmprepos):
     assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
 
 
+def test_graph(capsys, _main, tmprepos):
+    _main('graph', 'List-2023-1308', '--threshold', '3', '--threshold-property', 'FullFams')
+    out, _ = capsys.readouterr()
+    assert 'GHOST' in out
+    assert 'CASSAVA' not in out
+
+
 def test_upload_sources(_main, mocker, tmprepos):
     tmprepos.joinpath('c').write_text('{}', encoding='utf8')
     mocker.patch(
