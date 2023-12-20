@@ -17,6 +17,8 @@ from clldutils.clilib import Table, add_format
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 from pyconcepticon.util import read_dicts, CS_ID, CS_GLOSS
 
+import json
+
 
 def register(parser):
     add_conceptlist(parser, multiple=True)
@@ -143,6 +145,37 @@ def unique_number(items, args):
     _unique(items, args, 'NUMBER')
 
 
+def good_graph(items, args):
+    cids = {
+            "ID": {b["ID"] for a, b in items}, 
+            "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
+            }
+    # name suffixes for columns
+    names = ["TARGET", "SOURCE", "LINKED"]
+    all_problems = collections.OrderedDict({
+        "ID": {name: [] for name in names},
+        "NAME": {name: [] for name in names}
+        })
+
+    for cid, concept in items:
+        for name in names:
+            nodes_ = concept.get(name + "_CONCEPTS")
+            if nodes_:
+                nodes = json.loads(nodes_)
+                for node in nodes:
+                    for itm in ["ID", "NAME"]:
+                        if not node.get(itm) or not node.get(itm) in cids[itm]:
+                            all_problems[itm][name].append(
+                                    [cid] + id_number_gloss(concept))
+
+    with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
+        for item, problems in all_problems.items():
+            for name in names:
+                for problem in problems[name]:
+                    t.append(["Attribute "+ item + " in column " + name + 
+                              "_CONCEPTS does not occur in concept list"] + problem)
+
+
 CHECKS = [
     unique_concepticon_gloss,
     unique_id,
@@ -150,4 +183,5 @@ CHECKS = [
     matching_concepticon_gloss_and_id,
     valid_concepticon_gloss,
     valid_concepticon_id,
+    good_graph
 ]
