@@ -154,7 +154,8 @@ def good_graph(items, args):
     names = ["TARGET", "SOURCE", "LINKED"]
     all_problems = collections.OrderedDict({
         "ID": {name: [] for name in names},
-        "NAME": {name: [] for name in names}
+        "NAME": {name: [] for name in names},
+        "UNDIRECTED": {"LINKED": []},
         })
 
     for cid, concept in items:
@@ -167,13 +168,42 @@ def good_graph(items, args):
                         if not node.get(itm) or not node.get(itm) in cids[itm]:
                             all_problems[itm][name].append(
                                     [cid] + id_number_gloss(concept))
+    graph_problems = []
+    # assemble edges and make sure they make sense
+    edges = collections.defaultdict(dict)
+    for cid, concept in items:
+        nodes_ = concept.get("LINKED_CONCEPTS")
+        if nodes_:
+            nodes = json.loads(nodes_)
+            for node in nodes:
+                for k, v in node.items():
+                    if isinstance(v, (float, int)):
+                        edges[concept["ID"], node["ID"]][k] = v
+    for nA, nB in list(edges):
+        if not (nB, nA) in edges:
+            graph_problems.append(["other edge not found for {0} / {1}".format(
+                nA, nB), "", nA, ""])
+        else:
+            for attr in edges[nA, nB]:
+                if edges[nA, nB][attr] != edges[nB, nA].get(attr):
+                    graph_problems.append([
+                        "different vals for {0} / {1} in {2}".format(
+                            nA,
+                            nB,
+                            attr),
+                        "", "", ""])
+    for row in graph_problems:
+        print(row)
+
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for item, problems in all_problems.items():
             for name in names:
-                for problem in problems[name]:
+                for problem in problems.get(name, []):
                     t.append(["Attribute "+ item + " in column " + name + 
                               "_CONCEPTS does not occur in concept list"] + problem)
+        for row in graph_problems:
+            t.append(row)
 
 
 CHECKS = [
