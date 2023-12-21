@@ -1,4 +1,5 @@
 import re
+import json
 import pathlib
 import operator
 import functools
@@ -11,7 +12,7 @@ import pyconcepticon
 
 __all__ = [
     'natural_sort', 'to_dict', 'SourcesCatalog', 'UnicodeWriter', 'visit',
-    'load_conceptlist', 'write_conceptlist', 'read_dicts']
+    'load_conceptlist', 'write_conceptlist', 'read_dicts', 'ConceptlistWithNetworksWriter']
 
 REPOS_PATH = pathlib.Path(pyconcepticon.__file__).parent.parent
 PKG_PATH = pathlib.Path(pyconcepticon.__file__).parent
@@ -160,6 +161,34 @@ def write_conceptlist(clist, filename, header=False):
             v = clist[k]
             if k not in ['splits', 'mergers', 'header']:
                 writer.writerow([v[h] for h in header])
+
+
+class ConceptlistWithNetworksWriter(list):
+    """
+    Support for writing conceptlists which contain concept networks.
+    """
+    def __init__(self, name):
+        self.name = name
+        list.__init__(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        assert self, 'empty list'
+        header = list(self[0].keys())
+        if 'NUMBER' not in header:
+            header.insert(0, 'NUMBER')
+        header.insert(0, 'ID')
+        with UnicodeWriter('{}.tsv'.format(self.name), delimiter="\t") as writer:
+            writer.writerow(header)
+            for i, row in enumerate(self, start=1):
+                if 'NUMBER' not in row:
+                    row['NUMBER'] = str(i)
+                row['ID'] = '{}-{}'.format(self.name, row['NUMBER'])
+                writer.writerow([
+                    json.dumps(row[key]) if key.endswith('_CONCEPTS') else row[key]
+                    for key in header])
 
 
 class SourcesCatalog(object):

@@ -1,8 +1,12 @@
+import json
+
 import pytest
 from cdstarcat.catalog import Object, Bitstream
 from clldutils.jsonlib import load
+from csvw.dsv import reader
 
 from pyconcepticon.util import *
+
 
 
 def test_UnicodeWriter(tmp_path):
@@ -60,3 +64,11 @@ def test_natural_sort():
     source = ['Elm11', 'Elm12', 'Elm2', 'elm0', 'elm1', 'elm10', 'elm13', 'elm9']
     target = ['elm0', 'elm1', 'Elm2', 'elm9', 'elm10', 'Elm11', 'Elm12', 'elm13']
     assert natural_sort(source) == target
+
+
+def test_ConceptlistWithNetworksWriter(tmp_path):
+    with ConceptlistWithNetworksWriter(tmp_path / 'stuff') as cl:
+        cl.append(dict(TEST_CONCEPTS={"1": 2}))
+    res = list(reader(tmp_path / 'stuff.tsv', dicts=True, delimiter='\t'))
+    assert res[0]['NUMBER'] == '1'
+    assert json.loads(res[0]['TEST_CONCEPTS'])['1'] == 2

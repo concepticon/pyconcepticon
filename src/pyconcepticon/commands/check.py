@@ -147,16 +147,14 @@ def unique_number(items, args):
 
 def good_graph(items, args):
     cids = {
-            "ID": {b["ID"] for a, b in items}, 
-            "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}
-            }
+        "ID": {b["ID"] for a, b in items},
+        "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}}
     # name suffixes for columns
     names = ["TARGET", "SOURCE", "LINKED"]
     all_problems = collections.OrderedDict({
         "ID": {name: [] for name in names},
-        "NAME": {name: [] for name in names},
-        "UNDIRECTED": {"LINKED": []},
-        })
+        "NAME": {name: [] for name in names}
+    })
 
     for cid, concept in items:
         for name in names:
@@ -166,13 +164,14 @@ def good_graph(items, args):
                 for node in nodes:
                     for itm in ["ID", "NAME"]:
                         if not node.get(itm) or not node.get(itm) in cids[itm]:
-                            all_problems[itm][name].append(
-                                    [cid] + id_number_gloss(concept))
+                            all_problems[itm][name].append([cid] + id_number_gloss(concept))
+    
     graph_problems = []
     # assemble edges and make sure they make sense
-    edges = collections.defaultdict(dict)
-    for cid, concept in items:
+    edges, id2num = collections.defaultdict(dict), {}
+    for i, (cid, concept) in enumerate(items):
         nodes_ = concept.get("LINKED_CONCEPTS")
+        id2num[concept["ID"]] = (concept["NUMBER"], i+2)
         if nodes_:
             nodes = json.loads(nodes_)
             for node in nodes:
@@ -182,28 +181,31 @@ def good_graph(items, args):
     for nA, nB in list(edges):
         if not (nB, nA) in edges:
             graph_problems.append(["other edge not found for {0} / {1}".format(
-                nA, nB), "", nA, ""])
+                nA, nB), id2num[nA][1], nA, id2num[nA][0]])
         else:
             for attr in edges[nA, nB]:
                 if edges[nA, nB][attr] != edges[nB, nA].get(attr):
                     graph_problems.append([
-                        "different vals for {0} / {1} in {2}".format(
+                        "different valuess for {} / {} in {}".format(
                             nA,
                             nB,
-                            attr),
-                        "", "", ""])
-    for row in graph_problems:
-        print(row)
+                            attr
+                            ),
+                        id2num[nA][1], nA, id2num[nA][0]])
 
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for item, problems in all_problems.items():
             for name in names:
-                for problem in problems.get(name, []):
-                    t.append(["Attribute "+ item + " in column " + name + 
-                              "_CONCEPTS does not occur in concept list"] + problem)
-        for row in graph_problems:
-            t.append(row)
+                for problem in problems[name]:
+                    problem.insert(
+                        0,
+                        "Attribute {} in column {}_CONCEPTS does not occur in concept list".format(
+                            item, name))
+                    t.append(problem)
+        for problem in graph_problems:
+            t.append(problem)
+
 
 
 CHECKS = [
