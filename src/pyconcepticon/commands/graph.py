@@ -46,7 +46,7 @@ def register(parser):
         '--weights',
         action='store',
         type=lambda x: x.split(","),
-        default='',
+        default=[],
         help='specify weights to be listed in the graph, separated by comma.'
         )
 
