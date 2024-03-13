@@ -48,13 +48,11 @@ def register(parser):
         type=lambda x: x.split(","),
         default=[],
         help='specify weights to be listed in the graph, separated by comma.'
-        )
+    )
 
 
 def run(args):
-    header = []
-    if args.weights:
-        header += args.weights
+    header = args.weights
 
     with Table(args, *["SOURCE_ID", "SOURCE_NAME", "TARGET_ID", "TARGET_NAME"] + header) as t:
         for idx, item in enumerate(read_dicts(get_conceptlist(args, path_only=True)[0]), start=2):

@@ -12,8 +12,9 @@ The basic invocation looks like
 
 """
 import sys
-from pathlib import Path
+import pathlib
 import contextlib
+
 from clldutils.clilib import register_subcommands, get_parser_and_subparsers, ParserError
 from clldutils.loglib import Logging
 import cldfcatalog
@@ -28,13 +29,13 @@ def main(args=None, catch_all=False, parsed_args=None, log=None):
         repos = cldfcatalog.Config.from_file().get_clone('concepticon')
     except KeyError:  # pragma: no cover
         pass
-    repos = repos or Path('.')
+    repos = repos or pathlib.Path('.')
     parser, subparsers = get_parser_and_subparsers('concepticon')
     parser.add_argument(
         '--repos',
         help="clone of concepticon/concepticon-data",
         default=repos,
-        type=Path)
+        type=pathlib.Path)
     parser.add_argument(
         '--repos-version',
         help="version of repository data. Requires a git clone!",

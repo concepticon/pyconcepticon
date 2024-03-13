@@ -142,6 +142,14 @@ def test_link(fixturedir, tmp_path, capsys, _main):
     _main('link', str(test))
     assert nattr(test, 'CONCEPTICON_GLOSS') == 1
 
+    test = tmp_path / 'test.tsv'
+    shutil.copy(fixturedir.joinpath('conceptlist.tsv'), test)
+    t = test.read_text(encoding='utf8')
+    test.write_text(t.replace('ID', 'Id', 1), encoding='utf8')
+    assert nattr(test, 'CONCEPTICON_GLOSS') == 0
+    _main('link', str(test))
+    assert nattr(test, 'CONCEPTICON_GLOSS') == 1
+
     shutil.copy(fixturedir.joinpath('conceptlist2.tsv'), test)
     _main('link', str(test))
     out, err = capsys.readouterr()

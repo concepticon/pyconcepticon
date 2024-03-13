@@ -1,12 +1,11 @@
-import collections
-import operator
-import pathlib
 import re
+import pathlib
+import operator
 import warnings
-from functools import cached_property
+import functools
+import collections
 
 import attr
-import csvw
 from clldutils.apilib import DataObject
 from clldutils.jsonlib import load
 from csvw.dsv import reader
@@ -18,12 +17,14 @@ __all__ = [
     'Languoid', 'Concept', 'Conceptlist', 'ConceptRelations', 'Conceptset', 'Metadata',
     'REF_PATTERN', 'MD_SUFFIX']
 
-CSVW3 = int(csvw.__version__.split('.')[0]) > 2
 CONCEPTLIST_ID_PATTERN = re.compile(
     '(?P<author>[A-Za-z]+)-(?P<year>[0-9]+)-(?P<items>[0-9]+)(?P<letter>[a-z]?)$')
 REF_PATTERN = re.compile(':ref:(?P<id>[a-zA-Z0-9-]+)')
 MD_SUFFIX = '-metadata.json'
 warnings.filterwarnings('ignore', category=UserWarning, module='csvw.metadata')
+# Conceptlist columns which are assumed to contain concept network information:
+# Keys are column names, values are booleans indicating whether the edges are directed or not.
+CONCEPT_NETWORK_COLUMNS = {c + '_CONCEPTS': c != 'LINKED' for c in ["TARGET", "SOURCE", "LINKED"]}
 
 
 @attr.s
@@ -95,11 +96,11 @@ class Conceptset(Bag):
         if self._api and self.replacement_id:
             return self._api.conceptsets[self.replacement_id]
 
-    @cached_property
+    @functools.cached_property
     def relations(self):
         return self._api.relations.get(self.id, {}) if self._api else {}
 
-    @cached_property
+    @functools.cached_property
     def concepts(self):
         res = []
         if self._api:
@@ -191,7 +192,7 @@ class Concept(Bag):
     def label(self):
         return self.gloss or self.english
 
-    @cached_property
+    @functools.cached_property
     def cols(self):
         return Concept.public_fields() + list(self.attributes.keys())
 
@@ -215,7 +216,7 @@ class Conceptlist(Bag):
     alias = attr.ib(converter=lambda s: [] if s is None else split(s))
     local = attr.ib(default=False)
 
-    @cached_property
+    @functools.cached_property
     def tg(self):
         md = self.path.parent.joinpath(self.path.name + MD_SUFFIX)
         if not md.exists():
@@ -227,19 +228,16 @@ class Conceptlist(Bag):
                     md = ddir.joinpath('conceptlists', 'default' + MD_SUFFIX)
             else:
                 md = pathlib.Path(__file__).parent / 'conceptlist-metadata.json'
-        if CSVW3:
-            metadata = load(md)
-            metadata['tables'][0]['url'] = 'u'
-            tg = TableGroup.from_file(md, data=metadata)
-        else:
-            tg = TableGroup.from_file(md)
+        metadata = load(md)
+        metadata['tables'][0]['url'] = 'u'
+        tg = TableGroup.from_file(md, data=metadata)
 
         if isinstance(self._api, pathlib.Path):
             tg._fname = self._api.parent.joinpath(self._api.name + MD_SUFFIX)
         tg.tables[0].url = Link('{0}.tsv'.format(self.id))
         return tg
 
-    @cached_property
+    @functools.cached_property
     def metadata(self):
         return self.tg.tables[0]
 
@@ -249,16 +247,16 @@ class Conceptlist(Bag):
             return self._api
         return self._api.data_path('conceptlists', self.id + '.tsv')
 
-    @cached_property
+    @functools.cached_property
     def cols_in_list(self):
         return list(next(reader(self.path, dicts=True, delimiter='\t')).keys())
 
-    @cached_property
+    @functools.cached_property
     def attributes(self):
         return [c.name for c in self.metadata.tableSchema.columns
                 if c.name.lower() not in Concept.public_fields()]
 
-    @cached_property
+    @functools.cached_property
     def concepts(self):
         res = []
         if self.path.exists():

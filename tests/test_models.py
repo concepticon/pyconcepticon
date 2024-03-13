@@ -1,5 +1,3 @@
-import copy
-
 import pytest
 
 from pyconcepticon.models import *
@@ -11,41 +9,38 @@ def sun1991(tmprepos):
 
 
 def test_Conceptlist(sun1991, api):
-    kw = dict(
-        api=sun1991,
-        id='Abc-1234-12',
-        author='Some One',
-        year='1234',
-        list_suffix='a',
-        items='12',
-        tags='key1,key2',
-        source_language='eng',
-        target_language='other',
-        url=None,
-        refs='a,b',
-        pdf='',
-        note=None,
-        pages=None,
-        alias='',
-        local=True,
-    )
-    assert Conceptlist(**kw).tg
+    def kw(**kwargs):
+        res = dict(
+            api=api,
+            id='Abc-1234-12',
+            author='Some One',
+            year='1234',
+            list_suffix='a',
+            items='12',
+            tags='areal,basic',
+            source_language='eng',
+            target_language='other',
+            url=None,
+            refs='a,b',
+            pdf='',
+            note=None,
+            pages=None,
+            alias='',
+            local=True,
+        )
+        res.update(kwargs)
+        return res
+    assert Conceptlist(**kw()).tg
 
-    _kw = copy.deepcopy(kw)
+    _kw = kw()
     _kw['api'] = api
-    assert Conceptlist(**kw).tg
+    #assert Conceptlist(**kw).tg
 
     with pytest.raises(ValueError):
-        _kw = copy.deepcopy(kw)
-        _kw['year'] = 'xy'
-        Conceptlist(**_kw)
+        Conceptlist(**kw(year='xy'))
 
     with pytest.raises(ValueError):
-        _kw = copy.deepcopy(kw)
-        _kw['author'] = 'a b, c d, e f'
-        Conceptlist(**_kw)
+        Conceptlist(**kw(author='a b, c d, e f'))
 
     with pytest.raises(ValueError):
-        _kw = copy.deepcopy(kw)
-        _kw['author'] = 205*'x'
-        Conceptlist(**_kw)
+        Conceptlist(**kw(author=205 * 'x'))

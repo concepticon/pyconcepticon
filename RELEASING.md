@@ -2,12 +2,12 @@
 # Releasing pyconcepticon
 
 - Make sure the tests pass
-```
+```shell
 tox -r
 ```
 
 - Make sure flake8 is happy:
-```
+```shell
 flake8 src
 ```
 
@@ -34,7 +34,7 @@ twine upload dist/*
 ```
 
 - Push to github:
-```
+```shell
 git push origin
 git push --tags
 ```

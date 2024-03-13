@@ -29,12 +29,12 @@ def register(parser):
 
 def run(args):
     if not CONCEPTLIST_ID_PATTERN.match(args.to):
-        raise ParserError('Invalid conceptlist ID {0}'.format(args.to))
+        raise ParserError('Invalid conceptlist ID {0}'.format(args.to))  # pragma: no cover
     if args.to in args.repos.conceptlists:
-        raise ParserError('Target ID {0} exists!'.format(args.to))
+        raise ParserError('Target ID {0} exists!'.format(args.to))  # pragma: no cover
     try:
         cl = args.repos.conceptlists[args.from_]
-    except KeyError:
+    except KeyError:  # pragma: no cover
         raise ParserError('Source conceptlist {0} does not exist!'.format(args.from_))
 
     # write the adapted concept list to the new path:

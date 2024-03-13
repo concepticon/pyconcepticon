@@ -59,3 +59,5 @@ def test_concept_map():
     f, t = ['the dog', 'to kill'], ['kill', 'dog (verb)', 'to kill']
     assert concept_map(f, t) == {0: ([1], 4), 1: ([2], 1)}
     assert 0 not in concept_map(f, t, similarity_level=1)
+
+    assert concept_map([('house', 'noun', 5)], [('house', 'noun', 4)]) == {0: ([0], 1)}

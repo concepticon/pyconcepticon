@@ -2,8 +2,9 @@
 Module provides functions for the handling of concept glosses in linguistic datasets.
 """
 import re
-from collections import defaultdict
-from functools import cached_property
+import typing
+import functools
+import collections
 
 import attr
 
@@ -34,7 +35,7 @@ class Gloss(object):
 
     frequency = attr.ib(default=0)
 
-    @cached_property
+    @functools.cached_property
     def tokens(self):
         return ' '.join(s for s in self.gloss.split() if s not in ['or'])
 
@@ -106,14 +107,10 @@ def parse_gloss(gloss, language='en'):
         raise ValueError("Your gloss is empty")
     G = []
     gpos = ''
-    if language == 'en':
-        pos_markers = {'the': 'noun', 'a': 'noun', 'to': 'verb'}
-        prefixes = ['be', 'in', 'at']
-    elif language == 'de':
-        pos_markers = {'der': 'noun', 'die': 'noun', 'das': 'noun'}
-        prefixes = []
-    elif language == 'fr':
-        pos_markers = {
+    pos_markers = {
+        'en': {'the': 'noun', 'a': 'noun', 'to': 'verb'},
+        'de': {'der': 'noun', 'die': 'noun', 'das': 'noun'},
+        'fr': {
             'le': 'noun',
             'la': 'noun',
             'les': 'noun',
@@ -121,10 +118,9 @@ def parse_gloss(gloss, language='en'):
             'des': 'noun',
             'de': 'noun',
             'un': 'noun',
-            'une': 'noun'}
-        prefixes = ['il', 'est']
-    elif language == "es":
-        pos_markers = {
+            'une': 'noun',
+        },
+        'es': {
             "el": "noun",
             "la": "noun",
             "los": "noun",
@@ -135,12 +131,12 @@ def parse_gloss(gloss, language='en'):
             "las": "noun",
             "su": "noun",
         }
-        prefixes = ["lo", "les", "le"]
-
-    else:
-        pos_markers = {}
-        prefixes = []
-
+    }.get(language, {})
+    prefixes = {
+        'en': ['be', 'in', 'at'],
+        'fr': ['il', 'est'],
+        'es': ["lo", "les", "le"],
+    }.get(language, [])
     abbreviations = [
         ('vb', 'verb'),
         ('v.', 'verb'),
@@ -220,11 +216,11 @@ def parse_gloss(gloss, language='en'):
 
 def concept_map2(from_, to, freqs=None, language='en', **_):
     # get frequencies
-    freqs = freqs or defaultdict(int)
+    freqs = freqs or collections.defaultdict(int)
 
     # extract glossing information from the data
-    glosses = {'from': defaultdict(list), 'to': defaultdict(list)}
-    mapped = defaultdict(lambda: defaultdict(list))
+    glosses = {'from': collections.defaultdict(list), 'to': collections.defaultdict(list)}
+    mapped = collections.defaultdict(lambda: collections.defaultdict(list))
     for l_, key in [(from_, 'from'), (to, 'to')]:
         for i, concept in enumerate(l_):
             for gloss in parse_gloss(concept, language=language):
@@ -257,7 +253,11 @@ def concept_map2(from_, to, freqs=None, language='en', **_):
     return mapping
 
 
-def concept_map(from_, to, similarity_level=5, language='en', **kw):
+def concept_map(from_: typing.Iterable[typing.Union[typing.Tuple[str, str, float], str]],
+                to: typing.Iterable[typing.Union[typing.Tuple[str, str, float], str]],
+                similarity_level=5,
+                language='en',
+                **kw) -> typing.Dict[int, typing.Tuple[typing.List[int], int]]:
     """
     Function compares two concept lists and outputs suggestions for mapping.
 
@@ -267,11 +267,6 @@ def concept_map(from_, to, similarity_level=5, language='en', **kw):
     mapping of concepts in the second list to the first list. All suggestions can then be
     output in various forms, both with multiple matches excluded or included, and in
     textform or in other forms.
-
-    What is important, regarding the output here, is, that the output contains all
-    matches, including non-matched items which occur **in the second list but not in the
-    first list**. Non-matched items which occur in the first list but not in the second
-    list are ignored.
     """
     # extract glossing information from the data
     glosses = {'from': {}, 'to': {}}
@@ -298,7 +293,7 @@ def concept_map(from_, to, similarity_level=5, language='en', **kw):
                         sims.append((i, j, sim, tgloss.frequency))
 
     # we keep track of which target concepts have already been chosen as best matches:
-    best, consumed, alternatives = {}, set(), defaultdict(list)
+    best, consumed, alternatives = {}, set(), collections.defaultdict(list)
 
     # go through *all* matches from best to worst:
     for i, j, sim, frequency in sorted(sims, key=lambda x: (x[2], -x[3])):

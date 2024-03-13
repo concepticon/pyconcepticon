@@ -1,10 +1,9 @@
-import collections
-import operator
-import pathlib
 import re
 import typing
+import pathlib
 import warnings
-from functools import cached_property
+import functools
+import collections
 
 import cldfcatalog
 import pybtex.database
@@ -18,7 +17,7 @@ from pyconcepticon.glosses import concept_map, concept_map2
 from pyconcepticon.models import (  # noqa: F401
     Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset, REF_PATTERN, MD_SUFFIX,
 )
-from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, split, BIB_PATTERN
+from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, BIB_PATTERN
 
 Editor = collections.namedtuple('Editor', ['name', 'start', 'end'])
 
@@ -54,7 +53,7 @@ class Concepticon(API):
         """
         return self.path('concepticondata', *comps)
 
-    @cached_property
+    @functools.cached_property
     def editors(self) -> typing.List[Editor]:
         res = []
         header, rows = next(
@@ -65,7 +64,7 @@ class Concepticon(API):
             res.append(Editor(name.strip(), start, start if not to_ else end or None))
         return res
 
-    @cached_property
+    @functools.cached_property
     def vocabularies(self) -> typing.Dict[str, dict]:
         """
         Provide access to a `dict` of controlled vocabularies.
@@ -81,11 +80,11 @@ class Concepticon(API):
     def bibfile(self) -> pathlib.Path:
         return self.data_path('references', 'references.bib')
 
-    @cached_property
+    @functools.cached_property
     def sources(self) -> dict:
         return jsonlib.load(self.data_path('sources', 'cdstar.json'))
 
-    @cached_property
+    @functools.cached_property
     def retirements(self):
         return jsonlib.load(
             self.data_path('retired.json'), object_pairs_hook=collections.OrderedDict)
@@ -100,7 +99,7 @@ class Concepticon(API):
         self.retirements[type_].append(obj)
         jsonlib.dump(self.retirements, self.data_path('retired.json'), indent=2)
 
-    @cached_property
+    @functools.cached_property
     def bibliography(self) -> typing.Dict[str, Source]:
         """
         :returns: `dict` mapping BibTeX IDs to `Reference` instances.
@@ -109,7 +108,7 @@ class Concepticon(API):
             Source.from_entry(key, entry) for key, entry in pybtex.database.parse_string(
                 self.bibfile.read_text(encoding='utf8'), bib_format='bibtex').entries.items())
 
-    @cached_property
+    @functools.cached_property
     def conceptsets(self) -> typing.Dict[str, Conceptset]:
         """
         :returns: `dict` mapping ConceptSet IDs to `Conceptset` instances.
@@ -118,11 +117,11 @@ class Concepticon(API):
             Conceptset(api=self, **lowercase(d))
             for d in read_dicts(self.data_path('concepticon.tsv')))
 
-    @cached_property
+    @functools.cached_property
     def conceptlists_dicts(self):
         return read_dicts(self.data_path('conceptlists.tsv'))
 
-    @cached_property
+    @functools.cached_property
     def conceptlists(self):
         """
         :returns: `dict` mapping ConceptList IDs to `Conceptlist` instances.
@@ -131,42 +130,21 @@ class Concepticon(API):
         """
         return to_dict(Conceptlist(api=self, **lowercase(d)) for d in self.conceptlists_dicts)
 
-    @cached_property
-    def metadata(self):
-        """
-        :returns: `dict` mapping metadata provider IDs to `Metadata` instances.
-        """
-        return to_dict(map(
-            self._metadata,
-            [p.stem for p in self.data_path('concept_set_meta').glob('*.tsv')]))
-
-    def _metadata(self, id_):
-        values_path = self.data_path('concept_set_meta', id_ + '.tsv')
-        md_path = self.data_path('concept_set_meta', id_ + '.tsv' + MD_SUFFIX)
-        assert values_path.exists() and md_path.exists()
-        md = jsonlib.load(md_path)
-        return Metadata(
-            id=id_,
-            meta=md,
-            values=to_dict(
-                read_dicts(values_path, schema=md['tableSchema']),
-                key=operator.itemgetter('CONCEPTICON_ID')))
-
-    @cached_property
+    @functools.cached_property
     def relations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'))
 
-    @cached_property
+    @functools.cached_property
     def multirelations(self):
         """
         :returns: `dict` mapping concept sets to related concepts.
         """
         return ConceptRelations(self.data_path('conceptrelations.tsv'), multiple=True)
 
-    @cached_property
+    @functools.cached_property
     def frequencies(self):
         D = collections.defaultdict(int)
         for cl in self.conceptlists.values():
@@ -332,22 +310,6 @@ class Concepticon(API):
         # We collect all cite keys used to refer to references.
         all_refs = set()
         refs_in_bib = set(ref for ref in self.bibliography)
-        for meta in self.metadata.values():
-            cnames_schema = set(var['name'] for var in meta.meta['tableSchema']['columns'])
-            cnames_tsv = set(list(meta.values.values())[0])
-            if cnames_tsv - cnames_schema:  # pragma: no cover
-                error('column names in {0} but not in json-specs'.format(meta.id), 'name')
-            for i, (key, value) in enumerate(meta.values.items()):
-                if set(value.keys()) != cnames_schema:  # pragma: no cover
-                    error('meta data {0} contains irregular number of columns in line {1}'
-                          .format(meta.id, i + 2), 'name')
-                if key not in self.conceptsets:  # pragma: no cover
-                    error('meta data {0} references invalid CONCEPTICON_ID {2} in line {1}'
-                          .format(meta.id, i + 2, key), 'name')
-            for ref in split(meta.meta.get('dc:references') or ''):
-                if ref not in refs_in_bib:  # pragma: no cover
-                    error('cited bibtex record not in bib: {0}'.format(ref), 'name')
-                all_refs.add(ref)
 
         # Make sure only records in the BibTeX file references.bib are referenced by
         # concept lists.

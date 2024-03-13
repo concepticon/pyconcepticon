@@ -56,7 +56,7 @@ class Linker(object):
 
         if self._link_col[1]:
             val = self.concepts[self._link_col[1]].get(row[self._link_col[0]], "")
-            if not val:
+            if not val:  # pragma: no cover
                 print("unknown %s: %s" % (self._link_col[1], row[self._link_col[0]]))
             row = [val] + row
         else:

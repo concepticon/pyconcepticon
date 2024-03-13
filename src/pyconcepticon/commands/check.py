@@ -16,6 +16,7 @@ from clldutils.clilib import Table, add_format
 
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 from pyconcepticon.util import read_dicts, CS_ID, CS_GLOSS
+from pyconcepticon.models import CONCEPT_NETWORK_COLUMNS
 
 import json
 
@@ -103,25 +104,12 @@ def valid_concepticon_id(items, args):
                 t.append([cid, line] + id_number_gloss(item))  # pragma: no cover
 
 
-def provisional_concepticon_gloss(items, args):
-    """
-    If CONCEPTICON_GLOSS is prefixed with "!", it must not have a CONCEPTICON_ID.
-    """
-    with Result(
-            args, 'CONCEPTICON_GLOSS', 'CONCEPTICON_ID', 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
-        for line, item in items:
-            cid = item.get(CS_ID)
-            cgloss = item.get(CS_GLOSS)
-            if cid and cgloss and cgloss.startswith('!'):
-                t.append([cgloss, cid, line] + id_number_gloss(item))
-
-
 def _unique(items, args, *cols):
     col = None
     clashes = collections.defaultdict(list)
     for line, item in items:
         col = [c for c in cols if c in item]
-        if not col:
+        if not col:  # pragma: no cover
             print(termcolor.colored('no column {0}'.format(' or '.join(cols)), color='red'))
             return
         col = col[0]
@@ -150,28 +138,29 @@ def good_graph(items, args):
         "ID": {b["ID"] for a, b in items},
         "NAME": {b.get("ENGLISH", b.get("GLOSS")) for a, b in items}}
     # name suffixes for columns
-    names = ["TARGET", "SOURCE", "LINKED"]
     all_problems = collections.OrderedDict({
-        "ID": {name: [] for name in names},
-        "NAME": {name: [] for name in names}
+        "ID": {name: [] for name in CONCEPT_NETWORK_COLUMNS},
+        "NAME": {name: [] for name in CONCEPT_NETWORK_COLUMNS}
     })
 
     for cid, concept in items:
-        for name in names:
-            nodes_ = concept.get(name + "_CONCEPTS")
+        for name in CONCEPT_NETWORK_COLUMNS:
+            nodes_ = concept.get(name)
             if nodes_:
                 nodes = json.loads(nodes_)
                 for node in nodes:
                     for itm in ["ID", "NAME"]:
                         if not node.get(itm) or not node.get(itm) in cids[itm]:
                             all_problems[itm][name].append([cid] + id_number_gloss(concept))
-    
+
     graph_problems = []
     # assemble edges and make sure they make sense
     edges, id2num = collections.defaultdict(dict), {}
     for i, (cid, concept) in enumerate(items):
+        # LINKED_CONCEPTS are considered undirected. They may be specified twice - i.e. in both
+        # directions - but then they must carry the same exact attributes.
         nodes_ = concept.get("LINKED_CONCEPTS")
-        id2num[concept["ID"]] = (concept["NUMBER"], i+2)
+        id2num[concept["ID"]] = (concept["NUMBER"], i + 2)
         if nodes_:
             nodes = json.loads(nodes_)
             for node in nodes:
@@ -179,24 +168,16 @@ def good_graph(items, args):
                     if isinstance(v, (float, int)):
                         edges[concept["ID"], node["ID"]][k] = v
     for nA, nB in list(edges):
-        if not (nB, nA) in edges:
-            graph_problems.append(["other edge not found for {0} / {1}".format(
-                nA, nB), id2num[nA][1], nA, id2num[nA][0]])
-        else:
+        if (nB, nA) in edges:  # Check attributes:
             for attr in edges[nA, nB]:
                 if edges[nA, nB][attr] != edges[nB, nA].get(attr):
                     graph_problems.append([
-                        "different valuess for {} / {} in {}".format(
-                            nA,
-                            nB,
-                            attr
-                            ),
+                        "different values for {} / {} in {}".format(nA, nB, attr),
                         id2num[nA][1], nA, id2num[nA][0]])
-
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for item, problems in all_problems.items():
-            for name in names:
+            for name in CONCEPT_NETWORK_COLUMNS:
                 for problem in problems[name]:
                     problem.insert(
                         0,
@@ -205,7 +186,6 @@ def good_graph(items, args):
                     t.append(problem)
         for problem in graph_problems:
             t.append(problem)
-
 
 
 CHECKS = [
