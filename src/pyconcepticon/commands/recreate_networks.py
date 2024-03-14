@@ -24,6 +24,10 @@ def idname(t):
     return '{}\t{}\t{}'.format(d['ID'], d.get('NAME', ''), rem)
 
 
+def hashable_dict(d):
+    return tuple(sorted([(k, tuple(v) if isinstance(v, list) else v) for k, v in d.items()]))
+
+
 def diff(new, old):
     old = {r['ID']: r for r in reader(old, dicts=True, delimiter='\t')}
     new = {r['ID']: r for r in reader(new, dicts=True, delimiter='\t')}
@@ -32,8 +36,8 @@ def diff(new, old):
         i2 = new[k]
         for col in CONCEPT_NETWORK_COLUMNS:
             if col in i1:
-                v1 = set(tuple(sorted(i.items())) for i in json.loads(i1[col] or '[]'))
-                v2 = set(tuple(sorted(i.items())) for i in json.loads(i2[col] or '[]'))
+                v1 = set(hashable_dict(i) for i in json.loads(i1[col] or '[]'))
+                v2 = set(hashable_dict(i) for i in json.loads(i2[col] or '[]'))
                 if v1 != v2:
                     print('== {}\t{}'.format(k, col))
                     for ii in v1:
