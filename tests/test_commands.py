@@ -32,6 +32,13 @@ def test_citation(capsys, _main, tmprepos):
     assert '"dataset"' in tmprepos.joinpath('.zenodo.json').read_text(encoding='utf8')
 
 
+def test_recreate_networks(capsys, _main):
+    _main('recreate_networks', '--diff')
+    out, _ = capsys.readouterr()
+    assert 'Sun-1991-1004-79' in out
+    _main('recreate_networks')
+
+
 @pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_validate(capsys, _main):
     _main('validate')
