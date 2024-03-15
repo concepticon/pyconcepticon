@@ -111,11 +111,6 @@ optional arguments:
                         en)
 ```
 
-To create a user interface which allows you to explore concepticon concepts in the browser, run
-```shell script
-$ concepticon --repos=clld-concepticon-data-41d2bf0 app
-```
-
 
 ## Configuration
 

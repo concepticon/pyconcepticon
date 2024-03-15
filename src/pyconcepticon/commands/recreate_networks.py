@@ -12,6 +12,11 @@ from pyconcepticon.models import CONCEPT_NETWORK_COLUMNS
 
 def register(parser):
     parser.add_argument(
+        '--download',
+        action='store_true',
+        default=False,
+        help="Also run download script if available")
+    parser.add_argument(
         '--diff',
         action='store_true',
         default=False,
@@ -53,6 +58,8 @@ def run(args):
         d = cl.path.parent / cl.path.stem
         if d.exists() and d.is_dir():
             print(d)
+            if d.joinpath('download.py').exists() and args.download:  # pragma: no cover
+                subprocess.check_call(['python', 'download.py'], cwd=d)
             subprocess.check_call(['python', 'convert.py'], cwd=d)
             if args.diff and cl.path.exists():
                 diff(d / cl.path.name, cl.path)
