@@ -1,4 +1,5 @@
 import re
+import json
 import pathlib
 import operator
 import warnings
@@ -6,7 +7,7 @@ import functools
 import collections
 
 import attr
-from clldutils.apilib import DataObject
+
 from clldutils.jsonlib import load
 from csvw.dsv import reader
 from csvw.metadata import TableGroup, Link
@@ -25,6 +26,32 @@ warnings.filterwarnings('ignore', category=UserWarning, module='csvw.metadata')
 # Conceptlist columns which are assumed to contain concept network information:
 # Keys are column names, values are booleans indicating whether the edges are directed or not.
 CONCEPT_NETWORK_COLUMNS = {c + '_CONCEPTS': c != 'LINKED' for c in ["TARGET", "SOURCE", "LINKED"]}
+
+
+def value_ascsv(v):
+    if v is None:
+        return ''
+    elif isinstance(v, float):
+        return "{0:.5f}".format(v)
+    elif isinstance(v, dict):
+        return json.dumps(v)
+    elif isinstance(v, list):
+        return ';'.join(v)
+    return "{0}".format(v)
+
+
+@attr.s
+class DataObject(object):
+
+    @classmethod
+    def fieldnames(cls):
+        return [f.name for f in attr.fields(cls)]
+
+    def ascsv(self):
+        res = []
+        for f, v in zip(attr.fields(self.__class__), attr.astuple(self)):
+            res.append((f.metadata.get('ascsv') or value_ascsv)(v))
+        return res
 
 
 @attr.s

@@ -117,7 +117,6 @@ def test_check(api, capsys, tmp_path, _main):
     test.write_text(t.replace('Sun-1991-1004-1', 'Sun-1991-1004-2'), encoding='utf8')
     _main('check', str(test))
     out, err = capsys.readouterr()
-    print(out)
     assert 'Sun-1991-1004-2 ' in out
 
 

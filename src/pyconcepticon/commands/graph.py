@@ -52,17 +52,20 @@ def register(parser):
 
 
 def run(args):
-    header = args.weights
+    header, rows = args.weights, []
 
-    with Table(args, *["SOURCE_ID", "SOURCE_NAME", "TARGET_ID", "TARGET_NAME"] + header) as t:
-        for idx, item in enumerate(read_dicts(get_conceptlist(args, path_only=True)[0]), start=2):
-            links = json.loads(item[args.graph_column])
-            source_id, source_name = (item["ID"], item.get("ENGLISH", item.get("GLOSS", "?")))
-            for link in links:
-                link_id, link_name = link["ID"], link["NAME"]
-                if args.threshold and args.threshold_property:
-                    if link[args.threshold_property] < args.threshold:
-                        continue
-                if not header:
-                    header = [key for key in link if key not in ["ID", "NAME"]]
-                t.append([source_id, source_name, link_id, link_name] + [link[h] for h in header])
+    for idx, item in enumerate(read_dicts(get_conceptlist(args, path_only=True)[0]), start=2):
+        links = json.loads(item[args.graph_column])
+        source_id, source_name = (item["ID"], item.get("ENGLISH", item.get("GLOSS", "?")))
+        for link in links:
+            link_id, link_name = link["ID"], link["NAME"]
+            if args.threshold and args.threshold_property:
+                if link[args.threshold_property] < args.threshold:
+                    continue
+            if not header:
+                header = [key for key in link if key not in ["ID", "NAME"]]
+            rows.append([source_id, source_name, link_id, link_name] + [link[h] for h in header])
+
+    with Table(args, "SOURCE_ID", "SOURCE_NAME", "TARGET_ID", "TARGET_NAME", *header) as t:
+        for row in rows:
+            t.append(row)

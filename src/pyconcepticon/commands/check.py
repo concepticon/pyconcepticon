@@ -173,7 +173,10 @@ def good_graph(items, args):
                 if edges[nA, nB][attr] != edges[nB, nA].get(attr):
                     graph_problems.append([
                         "different values for {} / {} in {}".format(nA, nB, attr),
-                        id2num[nA][1], nA, id2num[nA][0]])
+                        id2num[nA][1],
+                        nA,
+                        id2num[nA][0],
+                    ])
 
     with Result(args, "good graph", 'LINE_NO', 'ID', 'NUMBER', 'GLOSS') as t:
         for item, problems in all_problems.items():

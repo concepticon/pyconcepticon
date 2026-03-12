@@ -6,7 +6,7 @@ import functools
 import collections
 
 import cldfcatalog
-import pybtex.database
+import simplepybtex.database
 from clldutils import jsonlib
 from clldutils.apilib import API
 from clldutils.markup import iter_markdown_tables
@@ -105,7 +105,7 @@ class Concepticon(API):
         :returns: `dict` mapping BibTeX IDs to `Reference` instances.
         """
         return to_dict(
-            Source.from_entry(key, entry) for key, entry in pybtex.database.parse_string(
+            Source.from_entry(key, entry) for key, entry in simplepybtex.database.parse_string(
                 self.bibfile.read_text(encoding='utf8'), bib_format='bibtex').entries.items())
 
     @functools.cached_property
