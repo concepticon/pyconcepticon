@@ -5,8 +5,8 @@ import operator
 import warnings
 import functools
 import collections
-
-import attr
+import dataclasses
+from typing import Optional, Any
 
 from clldutils.jsonlib import load
 from csvw.dsv import reader
@@ -40,25 +40,28 @@ def value_ascsv(v):
     return "{0}".format(v)
 
 
-@attr.s
-class DataObject(object):
+@dataclasses.dataclass
+class DataObject:
 
     @classmethod
     def fieldnames(cls):
-        return [f.name for f in attr.fields(cls)]
+        return [f.name for f in dataclasses.fields(cls)]
 
     def ascsv(self):
         res = []
-        for f, v in zip(attr.fields(self.__class__), attr.astuple(self)):
+        for f, v in zip(dataclasses.fields(self.__class__), dataclasses.astuple(self)):
             res.append((f.metadata.get('ascsv') or value_ascsv)(v))
         return res
 
 
-@attr.s
-class Languoid(object):
-    name = attr.ib(converter=lambda s: s.lower())
-    glottocode = attr.ib()
-    iso2 = attr.ib()
+@dataclasses.dataclass
+class Languoid:
+    name: str
+    glottocode: str
+    iso2: str
+
+    def __post_init__(self):
+        self.name = self.name.lower()
 
 
 class Bag(DataObject):
@@ -79,7 +82,7 @@ def valid_conceptlist_id(instance, attribute, value):
         if not CONCEPTLIST_ID_PATTERN.match(value):
             raise ValueError('invalid {0}.{1}: {2}'.format(
                 instance.__class__.__name__,
-                attribute.name,
+                attribute,
                 value))
 
 
@@ -93,26 +96,30 @@ def valid_conceptlist_author(instance, attribute, value):
 def valid_key(instance, attribute, value):
     vocabulary = None
     if hasattr(instance._api, 'vocabularies'):
-        vocabulary = instance._api.vocabularies[attribute.name.upper()]
+        vocabulary = instance._api.vocabularies[attribute.upper()]
     if value and vocabulary:
         if not isinstance(value, (list, tuple)):
             value = [value]
         if not all(v in vocabulary for v in value):
             raise ValueError('invalid {0}.{1}: {2}'.format(
                 instance.__class__.__name__,
-                attribute.name,
+                attribute,
                 value))
 
 
-@attr.s
+@dataclasses.dataclass
 class Conceptset(Bag):
-    id = attr.ib()
-    gloss = attr.ib()
-    semanticfield = attr.ib(validator=valid_key)
-    definition = attr.ib()
-    ontological_category = attr.ib(validator=valid_key)
-    replacement_id = attr.ib()
-    _api = attr.ib(default=None)
+    id: str
+    gloss: str
+    semanticfield: str
+    definition: str
+    ontological_category: str
+    replacement_id: str
+    _api: Any = None
+
+    def __post_init__(self):
+        valid_key(self, 'semanticfield', self.semanticfield)
+        valid_key(self, 'ontological_category', self.ontological_category)
 
     @property
     def superseded(self):
@@ -138,11 +145,11 @@ class Conceptset(Bag):
         return res
 
 
-@attr.s
+@dataclasses.dataclass
 class Metadata(Bag):
-    id = attr.ib()
-    meta = attr.ib(default=attr.Factory(dict))
-    values = attr.ib(default=attr.Factory(dict))
+    id: str
+    meta: dict = dataclasses.field(default_factory=dict)
+    values: dict = dataclasses.field(default_factory=dict)
 
 
 def valid_concept(instance, attribute, value):
@@ -203,17 +210,21 @@ class ConceptRelations(dict):
                     yield target, depth
 
 
-@attr.s
+@dataclasses.dataclass
 class Concept(Bag):
-    id = attr.ib(validator=valid_concept)
-    number = attr.ib()
-    concepticon_id = attr.ib(
-        default=None, converter=lambda s: s if s is None else '{0}'.format(s))
-    concepticon_gloss = attr.ib(default=None)
-    gloss = attr.ib(default=None)
-    english = attr.ib(default=None)
-    attributes = attr.ib(default=attr.Factory(dict))
-    _list = attr.ib(default=None)
+    id: str
+    number: str
+    concepticon_id: Optional[str] = None
+    concepticon_gloss: Optional[str] = None
+    gloss: Optional[str] = None
+    english: Optional[str] = None
+    attributes: dict = dataclasses.field(default_factory=dict)
+    _list: Any = None
+
+    def __post_init__(self):
+        valid_concept(self, 'id', self.id)
+        self.concepticon_id = self.concepticon_id \
+            if self.concepticon_id is None else f'{self.concepticon_id}'
 
     @property
     def label(self):
@@ -224,24 +235,36 @@ class Concept(Bag):
         return Concept.public_fields() + list(self.attributes.keys())
 
 
-@attr.s
+@dataclasses.dataclass
 class Conceptlist(Bag):
-    _api = attr.ib()
-    id = attr.ib(validator=valid_conceptlist_id)
-    author = attr.ib(validator=valid_conceptlist_author)
-    year = attr.ib(converter=int, validator=lambda i, a, v: valid_int(a, v))
-    list_suffix = attr.ib()
-    items = attr.ib(converter=int, validator=lambda i, a, v: valid_int(a, v))
-    tags = attr.ib(converter=split_ids, validator=valid_key)
-    source_language = attr.ib(converter=lambda v: split(v.lower()))
-    target_language = attr.ib()
-    url = attr.ib()
-    refs = attr.ib(converter=split_ids)
-    pdf = attr.ib(converter=split_ids)
-    note = attr.ib()
-    pages = attr.ib()
-    alias = attr.ib(converter=lambda s: [] if s is None else split(s))
-    local = attr.ib(default=False)
+    _api: Any
+    id: str
+    author: str
+    year: int
+    list_suffix: str
+    items: int
+    tags: list[str]
+    source_language: list[str]
+    target_language: str
+    url: str
+    refs: list[str]
+    pdf: list[str]
+    note: str
+    pages: str
+    alias: list[str]
+    local: bool = False
+
+    def __post_init__(self):
+        valid_conceptlist_id(self, 'id', self.id)
+        valid_conceptlist_author(self, 'author', self.author)
+        self.year = int(self.year)
+        self.items = int(self.items)
+        self.tags = split_ids(self.tags)
+        valid_key(self, 'tags', self.tags)
+        self.source_language = split(self.source_language.lower())
+        self.refs = split_ids(self.refs)
+        self.pdf = split_ids(self.pdf)
+        self.alias = [] if self.alias is None else split(self.alias)
 
     @functools.cached_property
     def tg(self):
@@ -293,7 +316,7 @@ class Conceptlist(Bag):
                     if k:
                         kl = k.lower()
                         operator.setitem(kw if kl in Concept.public_fields() else attributes, kl, v)
-                res.append(Concept(list=self, attributes=attributes, **kw))
+                res.append(Concept(_list=self, attributes=attributes, **kw))
         return to_dict(res)
 
     @classmethod
@@ -311,7 +334,7 @@ class Conceptlist(Bag):
             items=keywords.get('items', len(read_dicts(path))),
             year=keywords.get('year', 0),
             local=True)
-        return cls(api=path, **attrs)
+        return cls(_api=path, **attrs)
 
     def stats(self):
         """Return simple statistics for a given concept list"""

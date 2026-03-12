@@ -114,7 +114,7 @@ class Concepticon(API):
         :returns: `dict` mapping ConceptSet IDs to `Conceptset` instances.
         """
         return to_dict(
-            Conceptset(api=self, **lowercase(d))
+            Conceptset(_api=self, **lowercase(d))
             for d in read_dicts(self.data_path('concepticon.tsv')))
 
     @functools.cached_property
@@ -128,7 +128,7 @@ class Concepticon(API):
 
         .. note:: Individual concepts can be accessed via `Conceptlist.concepts`.
         """
-        return to_dict(Conceptlist(api=self, **lowercase(d)) for d in self.conceptlists_dicts)
+        return to_dict(Conceptlist(_api=self, **lowercase(d)) for d in self.conceptlists_dicts)
 
     @functools.cached_property
     def relations(self):
@@ -281,7 +281,7 @@ class Concepticon(API):
         for i, d in enumerate(self.conceptlists_dicts, start=1):
             if (not clids) or d['ID'] in clids:
                 try:
-                    Conceptlist(api=self, **lowercase(d))
+                    Conceptlist(_api=self, **lowercase(d))
                 except ValueError as e:  # pragma: no cover
                     error(str(e), 'conceptlists.tsv', i)
 

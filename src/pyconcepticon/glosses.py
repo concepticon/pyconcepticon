@@ -2,38 +2,41 @@
 Module provides functions for the handling of concept glosses in linguistic datasets.
 """
 import re
-import typing
+from typing import Union
 import functools
 import collections
-
-import attr
+from collections.abc import Iterable
+import dataclasses
 
 __all__ = ['parse_gloss', 'Gloss', 'concept_map']
 
 
-@attr.s
-class Gloss(object):
-    main = attr.ib(default='')
+@dataclasses.dataclass
+class Gloss:
+    main: str = ''
     # the start character indicating a potential comment:
-    comment_start = attr.ib(default='')
+    comment_start: str = ''
     # the comment (everything occurring in brackets in the input string:
-    comment = attr.ib(default='')
+    comment: str = ''
     # the end character indicating the end of a potential comment:
-    comment_end = attr.ib(default='')
+    comment_end: str = ''
     # the part of speech, in case this was specificied by a preceding "the" or a
     # preceding "to" in the mainpart of the string:
-    pos = attr.ib(default='')
+    pos: str = ''
     # the prefix, that is, words, like, eg. "be", "in", which may precede the main
     # gloss in concept lists, as in "be quiet":
-    prefix = attr.ib(default='')
+    prefix: str = ''
     # the longest constituent, which is identical with the main part if there's no
     # whitespace in the main part, otherwise the longest part part of the main gloss
     # split by whitespace:
-    longest_part = attr.ib(default='')
+    longest_part: str = ''
     # the original gloss (for the purpose of testing):
-    gloss = attr.ib(default='', converter=lambda s: s.lower().replace('*', ''))
+    gloss: str = ''
 
-    frequency = attr.ib(default=0)
+    frequency: int = 0
+
+    def __post_init__(self):
+        self.gloss = self.gloss.lower().replace('*', '')
 
     @functools.cached_property
     def tokens(self):
@@ -253,11 +256,13 @@ def concept_map2(from_, to, freqs=None, language='en', **_):
     return mapping
 
 
-def concept_map(from_: typing.Iterable[typing.Union[typing.Tuple[str, str, float], str]],
-                to: typing.Iterable[typing.Union[typing.Tuple[str, str, float], str]],
-                similarity_level=5,
-                language='en',
-                **kw) -> typing.Dict[int, typing.Tuple[typing.List[int], int]]:
+def concept_map(
+        from_: Iterable[Union[tuple[str, str, float], str]],
+        to: Iterable[Union[tuple[str, str, float], str]],
+        similarity_level=5,
+        language='en',
+        **kw,
+) -> dict[int, tuple[list[int], int]]:
     """
     Function compares two concept lists and outputs suggestions for mapping.
 
