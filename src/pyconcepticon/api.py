@@ -15,7 +15,7 @@ from clldutils.source import Source
 from pyconcepticon.glosses import concept_map, concept_map2
 # The following symbols from models can explicitly be imported from pyconcepticon.api:
 from pyconcepticon.models import (  # noqa: F401
-    Languoid, Metadata, Concept, Conceptlist, ConceptRelations, Conceptset, REF_PATTERN, MD_SUFFIX,
+    Languoid, Concept, Conceptlist, ConceptRelations, Conceptset, REF_PATTERN, MD_SUFFIX,
 )
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, BIB_PATTERN
 
@@ -202,29 +202,29 @@ class Concepticon(API):
                 + ['CONCEPTICON_ID', 'CONCEPTICON_GLOSS', 'SIMILARITY'])
             for i, item in enumerate(from_):
                 row = list(item.values())
-                matches, sim = cmap.get(i, ([], 10))
-                if sim <= similarity_level:
+                mapping = cmap.get_mapping(i)
+                if mapping.similarity <= similarity_level:
                     good_matches += 1
-                if not matches:
+                if not mapping.to_keys:
                     writer.writerow(row + ['', '???', ''])
-                elif len(matches) == 1:
+                elif len(mapping.to_keys) == 1:
                     row.extend([
-                        to[matches[0]][0], to[matches[0]][1].split('///')[0], sim])
+                        to[mapping.to_keys[0]][0], to[mapping.to_keys[0]][1].split('///')[0], mapping.similarity])
                     writer.writerow(row)
                 else:
                     assert not full_search
                     # we need a list to retain the order by frequency
                     visited = []
-                    for j in matches:
+                    for j in mapping.to_keys:
                         gls, cid = to[j][0], to[j][1].split('///')[0]
                         if (gls, cid) not in visited:
                             visited += [(gls, cid)]
                     if len(visited) > 1:
                         if not skip_multiple:
                             writer.writeblock(
-                                row + [gls, cid, sim] for gls, cid in visited)
+                                row + [gls, cid, mapping.similarity] for gls, cid in visited)
                     else:
-                        row.extend([visited[0][0], visited[0][1], sim])
+                        row.extend([visited[0][0], visited[0][1], mapping.similarity])
                         writer.writerow(row)
             writer.writerow(
                 ['#',
@@ -259,8 +259,8 @@ class Concepticon(API):
             similarity_level=similarity_level,
             language=language)
         for i, e in enumerate(entries):
-            match, simil = cmap.get(i, [[], 100])
-            yield set((e, to[m][0], to[m][1].split("///")[0], simil) for m in match)
+            mapping = cmap.get_mapping(i)
+            yield set((e, to[m][0], to[m][1].split("///")[0], mapping.similarity) for m in mapping.to_keys)
 
     def check(self, *clids):
         errors = []

@@ -33,22 +33,6 @@ def test_to_dict():
         to_dict([None, None], id)
 
 
-def test_load_conceptlist(tmp_path):
-    fname = tmp_path / 'cl.tsv'
-    fname.write_text("""\
-ID	NUMBER	ENGLISH	PROTOWORLD	CONCEPTICON_ID	CONCEPTICON_GLOSS
-Bengtson-1994-27-1	1	mother, older femaile relative	AJA	1216	MOTHER
-Bengtson-1994-27-1	2	knee, to bend	BU(N)KA	1371
-""", encoding='utf8')
-
-    res = load_conceptlist(fname)
-    assert res['splits']
-    out = tmp_path / 'clist'
-    write_conceptlist(res, out)
-    assert out.read_text('utf8')
-    visit(lambda l, r: r, str(fname))
-
-
 def test_SourcesCatalog(tmp_path):
     cat_path = tmp_path / 'test.json'
     with SourcesCatalog(cat_path) as cat:

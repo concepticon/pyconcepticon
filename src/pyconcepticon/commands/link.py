@@ -18,7 +18,7 @@ def run(args):
     rewrite(cl, Linker(cl.stem, args.repos.conceptsets.values()))
 
 
-class Linker(object):
+class Linker:
     def __init__(self, clid, conceptsets):
         self.clid = clid
         self.concepts = {

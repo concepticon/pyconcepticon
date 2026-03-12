@@ -19,8 +19,12 @@ def readme_conceptlists(api, cls, args):
     table = Table("name", "# mapped", "% mapped", "mergers")
     for cl in cls:
         args.log.info("processing <" + cl.path.name + ">")
-        mapped, mapped_ratio, mergers = cl.stats()
-        table.append(["[%s](%s) " % (cl.id, cl.path.name), len(mapped), mapped_ratio, len(mergers)])
+        stats = cl.stats()
+        table.append([
+            f"[{cl.id}]({cl.path.name}) ",
+            len(stats.mapped),
+            stats.mapped_ratio_percent,
+            len(stats.mergers)])
     readme(
         api.data_path("conceptlists"),
         "# Concept Lists\n\n{0}".format(table.render(verbose=True, sortkey=operator.itemgetter(0))),

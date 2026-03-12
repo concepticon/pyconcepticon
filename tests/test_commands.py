@@ -140,7 +140,7 @@ def test_link(fixturedir, tmp_path, capsys, _main):
         _main('link', '.')
 
     def nattr(p, attr):
-        return len(nfilter([getattr(i, attr, None) for i in read_all(str(p))]))
+        return len(nfilter([i.get(attr) for i in read_all(str(p))]))
 
     test = tmp_path / 'test.tsv'
     shutil.copy(fixturedir.joinpath('conceptlist.tsv'), test)

@@ -1,13 +1,17 @@
+"""
+OO wrappers for the data in the Concepticon TSV files.
+"""
 import re
-import json
 import pathlib
 import operator
 import warnings
 import functools
 import collections
+from collections.abc import Generator, Sequence
 import dataclasses
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
+import csvw
 from clldutils.jsonlib import load
 from csvw.dsv import reader
 from csvw.metadata import TableGroup, Link
@@ -15,8 +19,10 @@ from csvw.metadata import TableGroup, Link
 from pyconcepticon.util import split, split_ids, read_dicts, to_dict
 
 __all__ = [
-    'Languoid', 'Concept', 'Conceptlist', 'ConceptRelations', 'Conceptset', 'Metadata',
+    'Languoid', 'Concept', 'Conceptlist', 'ConceptRelations', 'Conceptset',
     'REF_PATTERN', 'MD_SUFFIX']
+
+RelationsType = dict[str, dict[str, Union[str, set[str]]]]
 
 CONCEPTLIST_ID_PATTERN = re.compile(
     '(?P<author>[A-Za-z]+)-(?P<year>[0-9]+)-(?P<items>[0-9]+)(?P<letter>[a-z]?)$')
@@ -28,34 +34,9 @@ warnings.filterwarnings('ignore', category=UserWarning, module='csvw.metadata')
 CONCEPT_NETWORK_COLUMNS = {c + '_CONCEPTS': c != 'LINKED' for c in ["TARGET", "SOURCE", "LINKED"]}
 
 
-def value_ascsv(v):
-    if v is None:
-        return ''
-    elif isinstance(v, float):
-        return "{0:.5f}".format(v)
-    elif isinstance(v, dict):
-        return json.dumps(v)
-    elif isinstance(v, list):
-        return ';'.join(v)
-    return "{0}".format(v)
-
-
-@dataclasses.dataclass
-class DataObject:
-
-    @classmethod
-    def fieldnames(cls):
-        return [f.name for f in dataclasses.fields(cls)]
-
-    def ascsv(self):
-        res = []
-        for f, v in zip(dataclasses.fields(self.__class__), dataclasses.astuple(self)):
-            res.append((f.metadata.get('ascsv') or value_ascsv)(v))
-        return res
-
-
 @dataclasses.dataclass
 class Languoid:
+    """A bag of attributes identifying a languoid."""
     name: str
     glottocode: str
     iso2: str
@@ -64,51 +45,33 @@ class Languoid:
         self.name = self.name.lower()
 
 
-class Bag(DataObject):
+@dataclasses.dataclass
+class Bag:
+    """Mixin class to make access to dataclass fields simpler."""
     @classmethod
-    def public_fields(cls):
+    def fieldnames(cls):  # pylint: disable=C0116
+        return [f.name for f in dataclasses.fields(cls)]
+
+    @classmethod
+    def public_fields(cls) -> list[str]:  # pylint: disable=C0116
         return [n for n in cls.fieldnames() if not n.startswith('_')]
 
 
-def valid_int(attr_name, value):
-    try:
-        int(value)
-    except ValueError:  # pragma: no cover
-        raise ValueError('invalid integer {0}: {1}'.format(attr_name, value))
-
-
-def valid_conceptlist_id(instance, attribute, value):
-    if not instance.local:
-        if not CONCEPTLIST_ID_PATTERN.match(value):
-            raise ValueError('invalid {0}.{1}: {2}'.format(
-                instance.__class__.__name__,
-                attribute,
-                value))
-
-
-def valid_conceptlist_author(instance, attribute, value):
-    if value.count(',') > 1 and (not any(s in value for s in [' and ', ' AND '])):
-        raise ValueError('invalid format for multiple authors: {}'.format(value))
-    if any(len(s) > 200 for s in re.split(r'\s+(?:and|AND)\s+', value)):
-        raise ValueError('suspiciously long author name in {}'.format(value))
-
-
-def valid_key(instance, attribute, value):
+def valid_key(instance: object, attribute: str, value: Union[str, list[str], tuple[str]]):
+    """Raises ValueError on invalid value."""
     vocabulary = None
-    if hasattr(instance._api, 'vocabularies'):
-        vocabulary = instance._api.vocabularies[attribute.upper()]
+    if hasattr(instance._api, 'vocabularies'):  # pylint: disable=W0212
+        vocabulary = instance._api.vocabularies[attribute.upper()]  # pylint: disable=W0212
     if value and vocabulary:
         if not isinstance(value, (list, tuple)):
             value = [value]
         if not all(v in vocabulary for v in value):
-            raise ValueError('invalid {0}.{1}: {2}'.format(
-                instance.__class__.__name__,
-                attribute,
-                value))
+            raise ValueError(f'invalid {instance.__class__.__name__}.{attribute}: {value}')
 
 
 @dataclasses.dataclass
 class Conceptset(Bag):
+    """A Concepticon Concept Set, i.e. a row in concepticon.tsv."""
     id: str
     gloss: str
     semanticfield: str
@@ -122,20 +85,33 @@ class Conceptset(Bag):
         valid_key(self, 'ontological_category', self.ontological_category)
 
     @property
-    def superseded(self):
+    def superseded(self) -> bool:
+        """If a conceptset has a replacement, it's superseded."""
         return bool(self.replacement_id)
 
     @property
-    def replacement(self):
+    def replacement(self) -> Optional['Conceptset']:
+        """The conceptset that replaces self - or None."""
         if self._api and self.replacement_id:
             return self._api.conceptsets[self.replacement_id]
+        return None  # pragma: no cover
 
     @functools.cached_property
-    def relations(self):
+    def relations(self) -> dict[str, str]:
+        """
+        >>> c = Concepticon('src/pyconcepticon/test_repos')
+        >>> c.conceptsets['2461'].relations
+        {'2460': 'narrower', '2448': 'narrower', '522': 'narrower', '2009': 'narrower'}
+        """
         return self._api.relations.get(self.id, {}) if self._api else {}
 
     @functools.cached_property
-    def concepts(self):
+    def concepts(self) -> list['Concept']:
+        """
+        >>> c = Concepticon('src/pyconcepticon/test_repos')
+        >>> c.conceptsets['1360'].concepts[0].id
+        'Sun-1991-1004-138'
+        """
         res = []
         if self._api:
             for clist in self._api.conceptlists.values():
@@ -143,22 +119,6 @@ class Conceptset(Bag):
                     if concept.concepticon_id == self.id:
                         res.append(concept)
         return res
-
-
-@dataclasses.dataclass
-class Metadata(Bag):
-    id: str
-    meta: dict = dataclasses.field(default_factory=dict)
-    values: dict = dataclasses.field(default_factory=dict)
-
-
-def valid_concept(instance, attribute, value):
-    if not value:
-        raise ValueError('missing concept id %s' % instance)
-    if not re.match('[0-9]+.*', instance.number):
-        raise ValueError('invalid concept number: %s' % instance)
-    if not instance.label:
-        raise ValueError('fields gloss *and* english missing: %s' % instance)
 
 
 _INVERSE_RELATIONS = {'broader': 'narrower'}
@@ -170,7 +130,7 @@ class ConceptRelations(dict):
     Class handles relations between concepts.
     """
     def __init__(self, path, multiple=False):
-        rels = collections.defaultdict(lambda: collections.defaultdict(set))
+        rels: RelationsType = collections.defaultdict(lambda: collections.defaultdict(set))
         self.raw = list(read_dicts(path))
         for item in self.raw:
             if multiple:
@@ -189,9 +149,17 @@ class ConceptRelations(dict):
                         _INVERSE_RELATIONS[item['RELATION']]
                     rels[item['TARGET_GLOSS']][item['SOURCE_GLOSS']] = \
                         _INVERSE_RELATIONS[item['RELATION']]
-        dict.__init__(self, rels.items())
+        dict.__init__(
+            self,
+            ((k, {x: y for x, y in v.items()}) for k, v in rels.items())  # pylint: disable=R1721
+        )
 
-    def iter_related(self, concept, relation, max_degree_of_separation=2):
+    def iter_related(
+            self,
+            concept: str,
+            relation: str,
+            max_degree_of_separation: int = 2,
+    ) -> Generator[tuple[str, int], None, None]:
         """
         Search for concept relations of a given concept.
 
@@ -211,7 +179,8 @@ class ConceptRelations(dict):
 
 
 @dataclasses.dataclass
-class Concept(Bag):
+class Concept(Bag):  # pylint: disable=R0902
+    """Concepts are the items in conceptlists."""
     id: str
     number: str
     concepticon_id: Optional[str] = None
@@ -222,52 +191,89 @@ class Concept(Bag):
     _list: Any = None
 
     def __post_init__(self):
-        valid_concept(self, 'id', self.id)
+        if not self.id:
+            raise ValueError(f'missing concept id {self}')
+        if not re.match('[0-9]+.*', self.number):
+            raise ValueError(f'invalid concept number: {self}')
+        if not self.label:
+            raise ValueError(f'fields gloss *and* english missing: {self}')
+
         self.concepticon_id = self.concepticon_id \
             if self.concepticon_id is None else f'{self.concepticon_id}'
 
     @property
-    def label(self):
+    def label(self) -> str:
+        """A description of the concept."""
         return self.gloss or self.english
 
     @functools.cached_property
-    def cols(self):
+    def cols(self) -> list[str]:
+        """Column names of the concept list to which the concept belongs."""
         return Concept.public_fields() + list(self.attributes.keys())
 
 
+@dataclasses.dataclass(frozen=True)
+class ConceptStats:
+    """Summary statistics on concepts."""
+    mapped: list[Concept]
+    mapped_ratio_percent: int
+    mergers: list[tuple[str, int]]
+
+    @classmethod
+    def from_concepts(cls, concepts: Sequence[Concept]) -> 'ConceptStats':
+        """Compute stats on a bunch of concepts."""
+        mapped = [c for c in concepts if c.concepticon_id]
+        mapped_ratio = 0
+        if concepts:
+            mapped_ratio = int((len(mapped) / len(concepts)) * 100)
+        concepticon_ids = collections.Counter(c.concepticon_id for c in concepts)
+        mergers = [(k, v) for k, v in concepticon_ids.items() if k and v > 1]
+        return cls(mapped, mapped_ratio, mergers)
+
+
 @dataclasses.dataclass
-class Conceptlist(Bag):
+class Conceptlist(Bag):  # pylint: disable=R0902
+    """Concept lists are the core entities of the Concepticon."""
     _api: Any
     id: str
     author: str
     year: int
     list_suffix: str
     items: int
-    tags: list[str]
-    source_language: list[str]
+    tags: Union[str, list[str]]
+    source_language: Union[str, list[str]]
     target_language: str
     url: str
-    refs: list[str]
-    pdf: list[str]
+    refs: Union[str, list[str]]
+    pdf: Union[str, list[str]]
     note: str
     pages: str
-    alias: list[str]
+    alias: Union[str, list[str]]
     local: bool = False
 
     def __post_init__(self):
-        valid_conceptlist_id(self, 'id', self.id)
-        valid_conceptlist_author(self, 'author', self.author)
+        if not self.local:
+            if not CONCEPTLIST_ID_PATTERN.match(self.id):
+                raise ValueError(f'Conceptlist.id: {self.id}')
+
+        if self.author.count(',') > 1 and (not any(s in self.author for s in [' and ', ' AND '])):
+            raise ValueError(f'invalid format for multiple authors: {self.author}')
+        if any(len(self.author) > 200 for s in re.split(r'\s+(?:and|AND)\s+', self.author)):
+            raise ValueError(f'suspiciously long author name in {self.author}')
+
         self.year = int(self.year)
         self.items = int(self.items)
         self.tags = split_ids(self.tags)
         valid_key(self, 'tags', self.tags)
-        self.source_language = split(self.source_language.lower())
+        if isinstance(self.source_language, str):
+            self.source_language = split(self.source_language.lower())
         self.refs = split_ids(self.refs)
         self.pdf = split_ids(self.pdf)
         self.alias = [] if self.alias is None else split(self.alias)
 
     @functools.cached_property
-    def tg(self):
+    def tg(self) -> csvw.TableGroup:
+        """A CSVW TableGroup instance describing the TSV file of the list."""
         md = self.path.parent.joinpath(self.path.name + MD_SUFFIX)
         if not md.exists():
             if hasattr(self._api, 'repos'):
@@ -283,39 +289,47 @@ class Conceptlist(Bag):
         tg = TableGroup.from_file(md, data=metadata)
 
         if isinstance(self._api, pathlib.Path):
-            tg._fname = self._api.parent.joinpath(self._api.name + MD_SUFFIX)
-        tg.tables[0].url = Link('{0}.tsv'.format(self.id))
+            tg._fname = self._api.parent.joinpath(  # pylint: disable=W0212
+                self._api.name + MD_SUFFIX)
+        tg.tables[0].url = Link(f'{self.id}.tsv')
         return tg
 
     @functools.cached_property
-    def metadata(self):
+    def metadata(self) -> csvw.Table:
+        """CSVW metadata for the TSV file of the conceptlist."""
         return self.tg.tables[0]
 
     @property
-    def path(self):
+    def path(self) -> pathlib.Path:
+        """Path of the TSV file of the conceptlist."""
         if isinstance(self._api, pathlib.Path):
             return self._api
         return self._api.data_path('conceptlists', self.id + '.tsv')
 
     @functools.cached_property
-    def cols_in_list(self):
+    def cols_in_list(self) -> list[str]:
+        """Actual column names in the TSV file of the conceptlist."""
         return list(next(reader(self.path, dicts=True, delimiter='\t')).keys())
 
     @functools.cached_property
-    def attributes(self):
+    def attributes(self) -> list[str]:
+        """Attributes are additional, non-standard columns in a conceptlist."""
         return [c.name for c in self.metadata.tableSchema.columns
                 if c.name.lower() not in Concept.public_fields()]
 
     @functools.cached_property
-    def concepts(self):
+    def concepts(self) -> dict[str, Concept]:
+        """List of concepts which are mapped to this conceptset."""
         res = []
         if self.path.exists():
             for item in self.metadata:
+                # Partition the data read from the TSV table for instantiation of a Concept.
                 kw, attributes = {}, {}
                 for k, v in item.items():
                     if k:
                         kl = k.lower()
-                        operator.setitem(kw if kl in Concept.public_fields() else attributes, kl, v)
+                        d = kw if kl in Concept.public_fields() else attributes
+                        operator.setitem(d, kl, v)
                 res.append(Concept(_list=self, attributes=attributes, **kw))
         return to_dict(res)
 
@@ -336,15 +350,7 @@ class Conceptlist(Bag):
             local=True)
         return cls(_api=path, **attrs)
 
-    def stats(self):
+    def stats(self) -> ConceptStats:
         """Return simple statistics for a given concept list"""
         # @todo: refine for custom-concept lists
-        concepts = self.concepts.values()
-        mapped = [c for c in concepts if c.concepticon_id]
-        mapped_ratio = 0
-        if concepts:
-            mapped_ratio = int((len(mapped) / len(concepts)) * 100)
-        concepticon_ids = collections.Counter(
-            [c.concepticon_id for c in concepts if c.concepticon_id])
-        mergers = [(k, v) for k, v in concepticon_ids.items() if v > 1]
-        return mapped, mapped_ratio, mergers
+        return ConceptStats.from_concepts(self.concepts.values())

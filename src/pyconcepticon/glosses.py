@@ -2,13 +2,14 @@
 Module provides functions for the handling of concept glosses in linguistic datasets.
 """
 import re
-from typing import Union
+from typing import Union, Literal, Callable, Any
 import functools
+import itertools
 import collections
-from collections.abc import Iterable
+from collections.abc import Iterable, Generator
 import dataclasses
 
-__all__ = ['parse_gloss', 'Gloss', 'concept_map']
+__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping']
 
 
 @dataclasses.dataclass
@@ -66,7 +67,7 @@ class Gloss:
         return parse_gloss(s, language=language)[0]
 
 
-def parse_gloss(gloss, language='en'):
+def parse_gloss(gloss: str, language='en') -> list[Gloss]:
     """
     Parse a gloss into its constituents by applying some general logic.
 
@@ -217,43 +218,115 @@ def parse_gloss(gloss, language='en'):
     return G
 
 
+GlossDictType = dict[int, list[Gloss]]
+
+
+@functools.total_ordering
+@dataclasses.dataclass(frozen=True)
+class Similarity:
+    from_key: int
+    to_key: int
+    level: int
+    frequency: int
+
+    def __lt__(self, other):
+        """
+        Order from best to worst.
+
+        Smaller level is better. Higher frequency is better.
+        """
+        return (self.level, -self.frequency) < (other.level, -other.frequency)
+
+
+@dataclasses.dataclass
+class Mapping:
+    to_keys: Union[list[int]] = dataclasses.field(default_factory=list)
+    similarity: int = 100
+
+    def sort_keys(self, sortkey: Callable[[int], Any]):
+        self.to_keys = sorted(self.to_keys, key=sortkey, reverse=True)
+
+
+class MappingDict(dict):
+    def get_mapping(self, item):
+        return self.get(item, Mapping())
+
+
+@dataclasses.dataclass
+class GlossMapper:
+    """Bundle functionality to map glosses with the data from two concept lists."""
+    from_list: GlossDictType = dataclasses.field(default_factory=dict)
+    to_list: GlossDictType = dataclasses.field(default_factory=dict)
+    mapped: dict[str, dict[Literal["from_list", "to_list"], list[int]]] = dataclasses.field(
+        default_factory=lambda: collections.defaultdict(lambda: collections.defaultdict(list)))
+
+    def add(self, key, i, glosses, pos=None, frequency=None):  # pylint: disable=R0913,R0917
+        if pos or frequency:
+            for gloss in glosses:
+                gloss.pos = pos
+                gloss.frequency = frequency
+        getattr(self, key)[i] = glosses
+
+        for gloss in glosses:
+            self.mapped[gloss.main][key] += [i]
+
+    def _iter_similarities(self, similarity_level) -> Generator[Similarity, None, None]:
+        # now that we have prepared all the glossed list as planned, we compare them item by
+        # item and check for similarity
+        for i, fglosses in self.from_list.items():
+            for fgloss in fglosses:
+                for j, tglosses in self.to_list.items():
+                    for tgloss in tglosses:
+                        sim = fgloss.similarity(tgloss)
+                        if sim and sim <= similarity_level:
+                            yield Similarity(i, j, sim, tgloss.frequency)
+
+    def best_matches(self, similarity_level) -> MappingDict:
+        # we keep track of which target concepts have already been chosen as best matches:
+        best, consumed, alternatives = MappingDict(), set(), collections.defaultdict(list)
+        # go through *all* matches from best to worst:
+        for sim in sorted(list(self._iter_similarities(similarity_level))):
+            if sim.from_key not in best and sim.to_key not in consumed:
+                best[sim.from_key] = Mapping([sim.to_key], sim.level)
+                consumed.add(sim.to_key)
+            elif sim.to_key not in alternatives[sim.from_key]:
+                alternatives[sim.from_key].append(sim.to_key)
+        return best
+
+    def best_matches_2(self) -> MappingDict:
+        mappings = MappingDict()
+        for v in self.mapped.values():
+            if not ('from_list' in v and 'to_list' in v):
+                continue
+            for i in v['from_list']:
+                current = Mapping()
+                if i in mappings:
+                    current = Mapping(mappings[i].to_keys, mappings[i].similarity)
+                for j in v['to_list']:
+                    for gloss_a, gloss_b in itertools.product(self.from_list[i], self.to_list[j]):
+                        sim = gloss_a.similarity(gloss_b) or 10
+                        if sim < current.similarity:
+                            current.to_keys = [j]
+                            current.similarity = sim
+                        elif sim == current.similarity:
+                            current.to_keys.append(j)
+                mappings[i] = current
+        return mappings
+
+
 def concept_map2(from_, to, freqs=None, language='en', **_):
+    # extract glossing information from the data
+    glosses = GlossMapper()
+    for l_, key in [(from_, 'from_list'), (to, 'to_list')]:
+        for i, concept in enumerate(l_):
+            glosses.add(key, i, parse_gloss(concept, language=language))
+
     # get frequencies
     freqs = freqs or collections.defaultdict(int)
-
-    # extract glossing information from the data
-    glosses = {'from': collections.defaultdict(list), 'to': collections.defaultdict(list)}
-    mapped = collections.defaultdict(lambda: collections.defaultdict(list))
-    for l_, key in [(from_, 'from'), (to, 'to')]:
-        for i, concept in enumerate(l_):
-            for gloss in parse_gloss(concept, language=language):
-                glosses[key][i] += [gloss]
-                mapped[gloss.main][key] += [i]
-    mapping = {}
-    sims = {}
-    for k, v in mapped.items():
-        if 'from' in v and 'to' in v:
-            for i in v['from']:
-                current_sim = sims.get(i, 10)
-                best = mapping.get(i, set())
-                for j in v['to']:
-                    for glossA in glosses['from'][i]:
-                        for glossB in glosses['to'][j]:
-                            sim = glossA.similarity(glossB) or 10
-                            if sim < current_sim:
-                                best = {j}
-                                current_sim = sim
-                            elif sim == current_sim:
-                                best.add(j)
-                mapping[i] = best
-                sims[i] = current_sim
-    for i in mapping:
-        mapping[i] = (
-            sorted(
-                mapping[i], key=lambda x: freqs.get(to[x].split('///')[0], 0),
-                reverse=True),
-            sims[i])
-    return mapping
+    mappings = glosses.best_matches_2()
+    for m in mappings.values():
+        m.sort_keys(lambda x: freqs.get(to[x].split('///')[0], 0))
+    return mappings
 
 
 def concept_map(
@@ -261,8 +334,7 @@ def concept_map(
         to: Iterable[Union[tuple[str, str, float], str]],
         similarity_level=5,
         language='en',
-        **kw,
-) -> dict[int, tuple[list[int], int]]:
+) -> MappingDict:
     """
     Function compares two concept lists and outputs suggestions for mapping.
 
@@ -274,38 +346,14 @@ def concept_map(
     textform or in other forms.
     """
     # extract glossing information from the data
-    glosses = {'from': {}, 'to': {}}
-    for l_, key in [(from_, 'from'), (to, 'to')]:
+    glosses = GlossMapper()
+    for l_, key in [(from_, 'from_list'), (to, 'to_list')]:
         for i, concept in enumerate(l_):
             if isinstance(concept, tuple):
                 concept, pos, frequency = concept
             else:
                 pos, frequency = None, 0
-            glosses[key][i] = parse_gloss(concept, language=language)
-            if pos or frequency:
-                for gloss in glosses[key][i]:
-                    gloss.pos = pos
-                    gloss.frequency = frequency
-    # now that we have prepared all the glossed list as planned, we compare them item by
-    # item and check for similarity
-    sims = []
-    for i, fglosses in glosses['from'].items():
-        for fgloss in fglosses:
-            for j, tglosses in glosses['to'].items():
-                for tgloss in tglosses:
-                    sim = fgloss.similarity(tgloss)
-                    if sim and sim <= similarity_level:
-                        sims.append((i, j, sim, tgloss.frequency))
+            glosses.add(
+                key, i, parse_gloss(concept, language=language), pos=pos, frequency=frequency)
 
-    # we keep track of which target concepts have already been chosen as best matches:
-    best, consumed, alternatives = {}, set(), collections.defaultdict(list)
-
-    # go through *all* matches from best to worst:
-    for i, j, sim, frequency in sorted(sims, key=lambda x: (x[2], -x[3])):
-        if i not in best and j not in consumed:
-            best[i] = ([j], sim)
-            consumed.add(j)
-        elif j not in alternatives[i]:
-            alternatives[i].append(j)
-
-    return best
+    return glosses.best_matches(similarity_level)

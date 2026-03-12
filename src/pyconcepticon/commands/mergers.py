@@ -10,7 +10,5 @@ def register(parser):
 
 def run(args):
     # @todo: check output
-    cl = get_conceptlist(args)
-    mapped, mapped_ratio, mergers = cl.stats()
-    for k, v in mergers:
+    for k, v in get_conceptlist(args).stats().mergers:
         print(k, v)
