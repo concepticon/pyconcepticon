@@ -1,3 +1,4 @@
+import dataclasses
 import re
 import typing
 import pathlib
@@ -19,6 +20,7 @@ from pyconcepticon.models import (  # noqa: F401
 )
 from pyconcepticon.util import read_dicts, lowercase, to_dict, UnicodeWriter, BIB_PATTERN
 
+assert MD_SUFFIX and Concept
 Editor = collections.namedtuple('Editor', ['name', 'start', 'end'])
 
 
@@ -262,195 +264,223 @@ class Concepticon(API):
             mapping = cmap.get_mapping(i)
             yield set((e, to[m][0], to[m][1].split("///")[0], mapping.similarity) for m in mapping.to_keys)
 
-    def check(self, *clids):
-        errors = []
+    def check(self, *clids) -> bool:
+        """Returns the success of the checks."""
         assert self.retirements
-        print('testing {0} concept lists'.format(len(clids) if clids else len(self.conceptlists)))
+        print(f'testing {len(clids) if clids else len(self.conceptlists)} concept lists')
 
-        def _msg(type_, msg, name, line):  # pragma: no cover
-            if line:
-                line = ':%s' % line
-            return '%s:%s%s: %s' % (type_.upper(), name, line or '', msg)
+        with Checker(self) as report:
+            for i, d in enumerate(self.conceptlists_dicts, start=1):
+                if (not clids) or d['ID'] in clids:
+                    try:
+                        Conceptlist(_api=self, **lowercase(d))
+                    except ValueError as e:  # pragma: no cover
+                        report.error(str(e), 'conceptlists.tsv', i)
 
-        def error(msg, name, line=0):  # pragma: no cover
-            errors.append((msg, name, line))
+            if report.errors:  # pragma: no cover
+                return False  # Exit early in case of structural errors.
 
-        def warning(msg, name, line=0):  # pragma: no cover
-            warnings.warn(_msg('warning', msg, name, line), Warning)
+            # Make sure all language-specific mappings are well specified
+            report.check_language_mappings()
 
-        for i, d in enumerate(self.conceptlists_dicts, start=1):
-            if (not clids) or d['ID'] in clids:
-                try:
-                    Conceptlist(_api=self, **lowercase(d))
-                except ValueError as e:  # pragma: no cover
-                    error(str(e), 'conceptlists.tsv', i)
+            # We collect all cite keys used to refer to references.
+            all_refs: set[str] = set()
+            refs_in_bib: set[str] = set(ref for ref in self.bibliography)
 
-        def exit():
-            for msg, name, line in errors:
-                print(_msg('error', msg, name, line))
-            return not bool(errors)
+            # Make sure only records in the BibTeX file references.bib are referenced by
+            # concept lists.
+            for i, cl in enumerate(self.conceptlists.values()):
+                if not (clids and cl.id not in clids):
+                    report.check_refs(cl, i, refs_in_bib, all_refs)
 
-        if errors:  # pragma: no cover
-            return exit()  # Exit early in case of structural errors.
+            all_refs.add('List2016a')
 
-        REF_WITHOUT_LABEL_PATTERN = re.compile(r'[^]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
-        REF_WITHOUT_LINK_PATTERN = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
+            if not clids:
+                # Only report unused references if we check all concept lists!
+                for ref in refs_in_bib - all_refs:  # pragma: no cover
+                    report.error(f'unused bibtex record: {ref}', 'references.bib')
 
-        # Make sure all language-specific mappings are well specified
+            ref_cols = {
+                'concepticon_id': set(self.conceptsets.keys()),
+                'concepticon_gloss': set(cs.gloss for cs in self.conceptsets.values()),
+            }
+
+            for i, rel in enumerate(self.relations.raw):
+                for attr, type_ in [
+                    ('SOURCE', 'concepticon_id'),
+                    ('TARGET', 'concepticon_id'),
+                    ('SOURCE_GLOSS', 'concepticon_gloss'),
+                    ('TARGET_GLOSS', 'concepticon_gloss'),
+                ]:
+                    if rel[attr] not in ref_cols[type_]:  # pragma: no cover
+                        report.error(
+                            'invalid {0}: {1}'.format(attr, rel[attr]), 'conceptrelations', i + 2)
+
+            for fname in self.data_path('conceptlists').glob('*.tsv'):
+                if clids and fname.stem not in clids:
+                    continue  # pragma: no cover
+                if fname.stem not in self.conceptlists:  # pragma: no cover
+                    report.error(
+                        'conceptlist missing in conceptlists.tsv: {0}'.format(fname.name), '')
+
+            broken_cls = []
+
+            for cl in self.conceptlists.values():
+                if clids and cl.id not in clids:
+                    continue  # pragma: no cover
+
+                # Check consistency between the csvw metadata and the column names in the list.
+                report.check_schema(cl, ref_cols, broken_cls)
+
+            report.check_conceptsets(broken_cls)
+
+        return not bool(report.errors)
+
+
+@dataclasses.dataclass
+class Checker:
+    api: Concepticon
+    errors: list = dataclasses.field(default_factory=list)
+    ref_without_label_pattern: re.Pattern = re.compile(r'[^]]\(:(ref|bib):[A-Za-z0-9\-]+\)')
+    ref_without_link_pattern: re.Pattern = re.compile('[^(]:(ref|bib):[A-Za-z0-9-]+')
+
+    @staticmethod
+    def _msg(type_, msg, name, line):  # pragma: no cover
+        if line:
+            line = ':%s' % line
+        return '%s:%s%s: %s' % (type_.upper(), name, line or '', msg)
+
+    def error(self, msg, name=None, line=0):  # pragma: no cover
+        self.errors.append((msg, name, line))
+
+    @classmethod
+    def warning(cls, msg, name, line=0):  # pragma: no cover
+        warnings.warn(cls._msg('warning', msg, name, line), Warning)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for msg, name, line in self.errors:
+            print(self._msg('error', msg, name, line))
+
+    def check_language_mappings(self):
         iso_langs = [
-            lang.iso2 for lang in self.vocabularies['COLUMN_TYPES'].values()
+            lang.iso2 for lang in self.api.vocabularies['COLUMN_TYPES'].values()
             if isinstance(lang, Languoid) and lang.iso2]
         if len(iso_langs) != len(set(iso_langs)):
-            error(
-                'Duplicate ISO codes: {}'.format(collections.Counter(iso_langs).most_common(1)),
+            self.error(
+                f'Duplicate ISO codes: {collections.Counter(iso_langs).most_common(1)}',
                 'concepticon.json')
-        assert set(p.stem.split('-')[1] for p in self.path('mappings').glob('map-*.tsv'))\
+        assert set(p.stem.split('-')[1] for p in self.api.path('mappings').glob('map-*.tsv')) \
             .issubset(iso_langs)
 
-        # We collect all cite keys used to refer to references.
-        all_refs = set()
-        refs_in_bib = set(ref for ref in self.bibliography)
+    def check_refs(self, cl: Conceptlist, i: int, refs_in_bib: set[str], all_refs: set[str]):
+        """
+        Check items referenced in a conceptlists note or refs field.
+        """
+        err = functools.partial(self.error, name='conceptlists.tsv', line=i + 2)
 
-        # Make sure only records in the BibTeX file references.bib are referenced by
-        # concept lists.
-        for i, cl in enumerate(self.conceptlists.values()):
-            if clids and cl.id not in clids:
-                continue  # pragma: no cover
-            fl = ('conceptlists.tsv', i + 2)
-            for ref in re.findall(BIB_PATTERN, cl.note) + cl.refs:
-                if ref not in refs_in_bib:
-                    error('cited bibtex record not in bib: {0}'.format(ref), *fl)
-                else:
-                    all_refs.add(ref)
+        for ref in re.findall(BIB_PATTERN, cl.note) + cl.refs:
+            if ref not in refs_in_bib:
+                err(f'cited bibtex record not in bib: {ref}')
+            else:
+                all_refs.add(ref)
 
-            for m in REF_WITHOUT_LABEL_PATTERN.finditer(cl.note):
-                error('link without label: {0}'.format(m.string[m.start():m.end()]), *fl)
+        for m in self.ref_without_label_pattern.finditer(cl.note):
+            err(f'link without label: {m.string[m.start():m.end()]}')
 
-            for m in REF_WITHOUT_LINK_PATTERN.finditer(cl.note):  # pragma: no cover
-                error('reference not in link: {0}'.format(m.string[m.start():m.end()]), *fl)
+        for m in self.ref_without_link_pattern.finditer(cl.note):  # pragma: no cover
+            err(f'reference not in link: {m.string[m.start():m.end()]}')
 
-            for m in REF_PATTERN.finditer(cl.note):
-                if m.group('id') not in self.conceptlists:  # pragma: no cover
-                    error('invalid conceptlist ref: {0}'.format(m.group('id')), *fl)
+        for m in REF_PATTERN.finditer(cl.note):
+            if m.group('id') not in self.api.conceptlists:  # pragma: no cover
+                err(f'invalid conceptlist ref: {m.group("id")}')
 
-            # make also sure that all sources are accompanied by a PDF, but only write a
-            # warning if this is not the case
-            for ref in cl.pdf:
-                if ref not in self.sources:  # pragma: no cover
-                    warning('no PDF found for {0}'.format(ref), 'conceptlists.tsv')
-        all_refs.add('List2016a')
+        # make also sure that all sources are accompanied by a PDF, but only write a
+        # warning if this is not the case
+        for ref in cl.pdf:
+            if ref not in self.api.sources:  # pragma: no cover
+                self.warning(f'no PDF found for {ref}', 'conceptlists.tsv')
 
-        if not clids:
-            # Only report unused references if we check all concept lists!
-            for ref in refs_in_bib - all_refs:  # pragma: no cover
-                error('unused bibtex record: {0}'.format(ref), 'references.bib')
+    def check_schema(self, cl: Conceptlist, ref_cols, broken_cls):
+        #
+        # Check consistency between the csvw metadata and the column names in the list.
+        #
+        err = functools.partial(self.error, name=cl.id)
 
-        ref_cols = {
-            'concepticon_id': set(self.conceptsets.keys()),
-            'concepticon_gloss': set(cs.gloss for cs in self.conceptsets.values()),
-        }
+        missing_in_md, missing_in_list = [], []
+        cols_in_md = []
+        for col in cl.metadata.tableSchema.columns:
+            cnames = []  # all names or aliases csvw will recognize for this column
+            if col.name in cols_in_md:  # pragma: no cover
+                err(f'Duplicate name ot title in table schema: {col.name}')
+            cnames.append(col.name)
+            if col.titles:
+                c = col.titles.getfirst()
+                if c in cols_in_md:  # pragma: no cover
+                    err(f'Duplicate name or title in table schema: {c}')
+                cnames.append(c)
+            cols_in_md.extend(cnames)
+            if not any(name in cl.cols_in_list for name in cnames):
+                # Neither name nor title of the column is in the actual list header.
+                missing_in_list.append(col.name)
+        for col in cl.cols_in_list:
+            if col not in cols_in_md:
+                missing_in_md.append(col)
 
-        for i, rel in enumerate(self.relations.raw):
-            for attr, type_ in [
-                ('SOURCE', 'concepticon_id'),
-                ('TARGET', 'concepticon_id'),
-                ('SOURCE_GLOSS', 'concepticon_gloss'),
-                ('TARGET_GLOSS', 'concepticon_gloss'),
-            ]:
-                if rel[attr] not in ref_cols[type_]:  # pragma: no cover
-                    error(
-                        'invalid {0}: {1}'.format(attr, rel[attr]), 'conceptrelations', i + 2)
+        for col in missing_in_list:
+            err(f'Column in metadata but missing in list: {col}')
+        for col in missing_in_md:
+            err(f'Column in list but missing in metadata: {col}')
 
-        for fname in self.data_path('conceptlists').glob('*.tsv'):
-            if clids and fname.stem not in clids:
-                continue  # pragma: no cover
-            if fname.stem not in self.conceptlists:  # pragma: no cover
-                error(
-                    'conceptlist missing in conceptlists.tsv: {0}'.format(fname.name), '')
+        try:
+            # Now check individual concepts:
+            for i, concept in enumerate(cl.concepts.values()):
+                if not concept.id.startswith(cl.id):  # pragma: no cover
+                    err(f'concept ID does not match concept list ID pattern {concept.id}')
 
-        broken_cls = []
+                if concept.concepticon_id:
+                    cs = self.api.conceptsets.get(concept.concepticon_id)
+                    if not cs:  # pragma: no cover
+                        err(f'invalid conceptset ID {concept.concepticon_id}')
+                    elif cs.gloss != concept.concepticon_gloss:  # pragma: no cover
+                        err(f'wrong conceptset GLOSS for ID '
+                            f'{cs.id}: {concept.concepticon_gloss} -> {cs.gloss}')
 
-        for cl in self.conceptlists.values():
-            if clids and cl.id not in clids:
-                continue  # pragma: no cover
-            #
-            # Check consistency between the csvw metadata and the column names in the list.
-            #
-            missing_in_md, missing_in_list = [], []
-            cols_in_md = []
-            for col in cl.metadata.tableSchema.columns:
-                cnames = []  # all names or aliases csvw will recognize for this column
-                if col.name in cols_in_md:  # pragma: no cover
-                    error('Duplicate name ot title in table schema: {0}'.format(col.name), cl.id)
-                cnames.append(col.name)
-                if col.titles:
-                    c = col.titles.getfirst()
-                    if c in cols_in_md:  # pragma: no cover
-                        error('Duplicate name or title in table schema: {0}'.format(c), cl.id)
-                    cnames.append(c)
-                cols_in_md.extend(cnames)
-                if not any(name in cl.cols_in_list for name in cnames):
-                    # Neither name nor title of the column is in the actual list header.
-                    missing_in_list.append(col.name)
-            for col in cl.cols_in_list:
-                if col not in cols_in_md:
-                    missing_in_md.append(col)
+                if i == 0:  # pragma: no cover
+                    for lg in cl.source_language:
+                        if lg.lower() not in concept.cols:
+                            err(f'missing source language col {lg.upper()}')
 
-            for col in missing_in_list:
-                error('Column in metadata but missing in list: {0}'.format(col), cl.id)
-            for col in missing_in_md:
-                error('Column in list but missing in metadata: {0}'.format(col), cl.id)
+                for lg in cl.source_language:  # pragma: no cover
+                    if not (concept.attributes.get(lg.lower())
+                            or getattr(concept, lg.lower(), None)
+                            or (lg.lower() == 'english' and not concept.gloss)):
+                        err(f'missing source language translation {lg}', line=i + 2)
+                for attr, values in ref_cols.items():
+                    val = getattr(concept, attr)
+                    if val:
+                        # check that there are not leading and trailing spaces
+                        # (while computationally expensive, this helps catch really
+                        # hard to find typos)
+                        if val != val.strip():  # pragma: no cover
+                            err(f"leading or trailing spaces in value for {attr}: '{val}'",
+                                line=i + 2)
 
-            try:
-                # Now check individual concepts:
-                for i, concept in enumerate(cl.concepts.values()):
-                    if not concept.id.startswith(cl.id):  # pragma: no cover
-                        error(
-                            'concept ID does not match concept list ID pattern %s' % concept.id,
-                            cl.id)
+                        if val not in values:  # pragma: no cover
+                            err(f'invalid value for {attr}: {val}', line=i + 2)
+        except TypeError as e:  # pragma: no cover
+            broken_cls.append(cl.id)
+            self.error(str(e), cl.id)
+            raise
 
-                    if concept.concepticon_id:
-                        cs = self.conceptsets.get(concept.concepticon_id)
-                        if not cs:  # pragma: no cover
-                            error('invalid conceptset ID %s' % concept.concepticon_id, cl.id)
-                        elif cs.gloss != concept.concepticon_gloss:  # pragma: no cover
-                            error(
-                                'wrong conceptset GLOSS for ID {0}: {1} -> {2}'.format(
-                                    cs.id, concept.concepticon_gloss, cs.gloss),
-                                cl.id)
-
-                    if i == 0:  # pragma: no cover
-                        for lg in cl.source_language:
-                            if lg.lower() not in concept.cols:
-                                error('missing source language col %s' % lg.upper(), cl.id)
-
-                    for lg in cl.source_language:  # pragma: no cover
-                        if not (concept.attributes.get(lg.lower())
-                                or getattr(concept, lg.lower(), None)
-                                or (lg.lower() == 'english' and not concept.gloss)):
-                            error('missing source language translation %s' % lg, cl.id, i + 2)
-                    for attr, values in ref_cols.items():
-                        val = getattr(concept, attr)
-                        if val:
-                            # check that there are not leading and trailing spaces
-                            # (while computationally expensive, this helps catch really
-                            # hard to find typos)
-                            if val != val.strip():  # pragma: no cover
-                                error("leading or trailing spaces in value for %s: '%s'" %
-                                      (attr, val), cl.id, i + 2)
-
-                            if val not in values:  # pragma: no cover
-                                error('invalid value for %s: %s' % (attr, val), cl.id, i + 2)
-            except TypeError as e:  # pragma: no cover
-                broken_cls.append(cl.id)
-                error(str(e), cl.id)
-                raise
-
+    def check_conceptsets(self, broken_cls):
         sameas = {}
         glosses = set()
-        for cs in self.conceptsets.values():
+        for cs in self.api.conceptsets.values():
             if cs.gloss in glosses:  # pragma: no cover
-                error('duplicate conceptset gloss: {0}'.format(cs.gloss), cs.id)
+                self.error('duplicate conceptset gloss: {0}'.format(cs.gloss), cs.id)
             glosses.add(cs.gloss)
             for target, rel in cs.relations.items():
                 if rel == 'sameas':
@@ -468,12 +498,10 @@ class Concepticon(API):
                 assert csid not in deprecated
                 deprecated[csid] = csids[0]
 
-        for cl in self.conceptlists.values():
+        for cl in self.api.conceptlists.values():
             if cl.id in broken_cls:
                 continue  # pragma: no cover
             for concept in cl.concepts.values():
                 if concept.concepticon_id in deprecated:  # pragma: no cover
-                    error('deprecated concept set {0} linked for {1}'.format(
+                    self.error('deprecated concept set {0} linked for {1}'.format(
                         concept.concepticon_id, concept.id), cl.id)
-
-        return exit()

@@ -3,17 +3,32 @@ Module provides functions for the handling of concept glosses in linguistic data
 """
 import re
 import enum
-from typing import Union, Literal, Callable, Any, Optional
+from typing import Union, Literal, Callable, Any, Optional, get_args
 import functools
 import itertools
 import collections
 from collections.abc import Iterable, Generator
 import dataclasses
 
-__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'SimilarityLevel']
+__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'Similarity', 'Pos']
 
 
-class SimilarityLevel(enum.Enum):
+class Pos(enum.Enum):
+    """Recognized parts of speech in glosses."""
+    NOUN = enum.auto()
+    VERB = enum.auto()
+    ADJECTIVE = enum.auto()
+    ADVERB = enum.auto()
+    CLASSIFIER = enum.auto()
+
+    @classmethod
+    def from_string(cls, s: str) -> 'Pos':
+        """Get the enum symbol from its name."""
+        return getattr(cls, s.upper())
+
+
+class Similarity(enum.IntEnum):
+    """Enum to make similarity measures more transparent."""
     SAME = 1
     SAME_DIFFERENT_POS = 2
     SAME_MAIN = 3
@@ -26,7 +41,13 @@ class SimilarityLevel(enum.Enum):
 
 
 @dataclasses.dataclass
-class Gloss:
+class Gloss:  # pylint: disable=too-many-instance-attributes
+    """
+    A gloss, as parsed from a string with several constituent parts.
+
+    >>> Gloss.from_string('word [comment]').comment
+    'comment'
+    """
     main: str = ''
     # the start character indicating a potential comment:
     comment_start: str = ''
@@ -36,7 +57,7 @@ class Gloss:
     comment_end: str = ''
     # the part of speech, in case this was specificied by a preceding "the" or a
     # preceding "to" in the mainpart of the string:
-    pos: str = ''
+    pos: Optional[Pos] = None
     # the prefix, that is, words, like, eg. "be", "in", which may precede the main
     # gloss in concept lists, as in "be quiet":
     prefix: str = ''
@@ -51,49 +72,40 @@ class Gloss:
 
     def __post_init__(self):
         self.gloss = self.gloss.lower().replace('*', '')
+        if isinstance(self.pos, str):
+            if self.pos:
+                self.pos = Pos.from_string(self.pos)
+            else:
+                self.pos = None
 
-    @functools.cached_property
-    def tokens(self):
-        return ' '.join(s for s in self.gloss.split() if s not in ['or'])
-
-    def similarity(self, other) -> SimilarityLevel:
+    def similarity(self, other) -> Similarity:  # pylint: disable=R0911
+        """Compute similarity between two glosses."""
         same_pos = self.pos and self.pos == other.pos
         # first-order-match: identical glosses
         if self.gloss == other.gloss:
             if same_pos:
-                return SimilarityLevel.SAME
-            return SimilarityLevel.SAME_DIFFERENT_POS
+                return Similarity.SAME
+            return Similarity.SAME_DIFFERENT_POS
         # second-order match: identical main-parts
         if self.main == other.gloss or self.gloss == other.main or self.main == other.main:
             # best match if pos matches
             if same_pos:
-                return SimilarityLevel.SAME_MAIN
-            return SimilarityLevel.SAME_MAIN_DIFFERENT_POS
+                return Similarity.SAME_MAIN
+            return Similarity.SAME_MAIN_DIFFERENT_POS
         if self.longest_part == other.longest_part:
             if same_pos:
-                return SimilarityLevel.SAME_LONGEST
-            return SimilarityLevel.SAME_LONGEST_DIFFERENT_POS
+                return Similarity.SAME_LONGEST
+            return Similarity.SAME_LONGEST_DIFFERENT_POS
         if other.longest_part in self.main.split():
-            return SimilarityLevel.LONGEST_IS_CONTAINED
+            return Similarity.LONGEST_IS_CONTAINED
         if self.longest_part in other.main.split():
-            return SimilarityLevel.LONGEST_CONTAINS
-        return SimilarityLevel.DIFFERENT
+            return Similarity.LONGEST_CONTAINS
+        return Similarity.DIFFERENT
 
     @classmethod
-    def from_string(cls, s, language='en'):
+    def from_string(cls, s: str, language: str = 'en') -> 'Gloss':
+        """Parse a gloss from the string."""
         return parse_gloss(s, language=language)[0]
-
-
-class Pos(enum.Enum):
-    NOUN = enum.auto()
-    VERB = enum.auto()
-    ADJECTIVE = enum.auto()
-    ADVERB = enum.auto()
-    CLASSIFIER = enum.auto()
-
-    @classmethod
-    def from_string(cls, s):
-        return getattr(cls, s.upper())
 
 
 POS_MARKERS_BY_LANGUAGE = {
@@ -143,6 +155,7 @@ POS_ABBREVIATIONS = [
 
 @dataclasses.dataclass
 class ParseSpec:
+    """Specification (and implementation) for the parsing of glosses for comparison."""
     pos_markers: dict[str, Pos]
     prefixes: list[str]
     pos_abbreviations: list[tuple[str, Pos]]
@@ -152,7 +165,8 @@ class ParseSpec:
         default_factory=lambda: {'(': ')', '[': ']', '{': '}', '（': '）', '<': '>'})
 
     @classmethod
-    def for_language(cls, language='en'):
+    def for_language(cls, language: Optional[str] = 'en') -> 'ParseSpec':
+        """Get a ParseSpec, optionally tuned to a particular gloss language."""
         pos_markers = POS_MARKERS_BY_LANGUAGE.get(language, {})
         pos_markers = {k: Pos.from_string(v) for k, v in pos_markers.items()}
         abbreviations = [(k, Pos.from_string(v)) for k, v in POS_ABBREVIATIONS]
@@ -201,7 +215,13 @@ class ParseSpec:
     def _strip_punctuation(self, s: str) -> str:
         return ''.join(c for c in s if c not in self.punctuation)
 
-    def parse_constituent(self, full_gloss, constituent, gpos) -> tuple[Optional[Gloss], str]:
+    def parse_constituent(
+            self,
+            full_gloss,
+            constituent,
+            gpos: Optional[Pos] = None,
+    ) -> tuple[Optional[Gloss], Optional[Pos]]:
+        """Parse a gloss constituent into a proper Gloss or part-of-speech information."""
         gloss = Gloss(gloss=full_gloss)
         mainpart = self._strip_comments(constituent, gloss)
         mainpart = self._strip_punctuation(mainpart).strip().lower().split()
@@ -211,7 +231,7 @@ class ParseSpec:
             gloss.pos = gpos
         else:
             if len(mainpart) > 1 and mainpart[0] in self.pos_markers:
-                gpos = gloss.pos = self.pos_markers[mainpart.pop(0)].name.lower()
+                gpos = gloss.pos = self.pos_markers[mainpart.pop(0)]
 
         # search for strip-off-prefixes
         if len(mainpart) > 1 and mainpart[0] in self.prefixes:
@@ -220,14 +240,14 @@ class ParseSpec:
         if mainpart:
             # check for a "first part" in case we encounter white space in the
             # data (and return only the largest string of them)
-            gloss.longest_part = sorted(mainpart, key=lambda x: len(x))[-1]
+            gloss.longest_part = sorted(mainpart, key=len)[-1]
 
             # search for pos in comment
             if not gloss.pos:
                 cparts = gloss.comment.split()
                 for p, t in self.pos_abbreviations:
                     if p in cparts or p in mainpart or t.name in cparts or t.name in mainpart:
-                        gloss.pos = t.name.lower()
+                        gloss.pos = t
                         break
 
             gloss.main = ' '.join(mainpart)
@@ -283,13 +303,9 @@ def parse_gloss(gloss: str, language='en') -> list[Gloss]:
     if '///' in gloss:
         gloss = gloss.split('///')[1]
 
-    # if the gloss consists of multiple parts, we store both the separate part
-    # and a normalized form of the full gloss
-    constituents = spec.split_constituents(gloss)
-
     glosses = []
-    gpos = ''
-    for constituent in constituents:
+    gpos = None
+    for constituent in spec.split_constituents(gloss):
         if constituent.strip():
             res, gpos = spec.parse_constituent(gloss, constituent, gpos)
             if res:
@@ -303,10 +319,11 @@ GlossDictType = dict[int, list[Gloss]]
 
 @functools.total_ordering
 @dataclasses.dataclass(frozen=True)
-class Similarity:
+class SimilarPair:
+    """Information about a pair of similar glosses in two conceptlists."""
     from_key: int
     to_key: int
-    level: int
+    similarity: Similarity
     frequency: int
 
     def __lt__(self, other):
@@ -315,21 +332,31 @@ class Similarity:
 
         Smaller level is better. Higher frequency is better.
         """
-        return (self.level, -self.frequency) < (other.level, -other.frequency)
+        return (self.similarity, -self.frequency) < (other.similarity, -other.frequency)
 
 
 @dataclasses.dataclass
 class Mapping:
+    """
+    Items of a conceptlist can be associated with a Mapping, identifying similar items in a
+    different list,
+    """
     to_keys: Union[list[int]] = dataclasses.field(default_factory=list)
-    similarity: int = SimilarityLevel.DIFFERENT.value
+    similarity: Similarity = Similarity.DIFFERENT
 
     def sort_keys(self, sortkey: Callable[[int], Any]):
+        """Sort keys in the mapping according to sortkey."""
         self.to_keys = sorted(self.to_keys, key=sortkey, reverse=True)
 
 
 class MappingDict(dict):
-    def get_mapping(self, item):
+    """Map conceptlist items identified by index to a Mapping"""
+    def get_mapping(self, item: int) -> Mapping:
+        """Get the associated mapping or the default, i.e. "null" mapping."""
         return self.get(item, Mapping())
+
+
+ListIdentifierType = Literal["from_list", "to_list"]
 
 
 @dataclasses.dataclass
@@ -337,10 +364,16 @@ class GlossMapper:
     """Bundle functionality to map glosses with the data from two concept lists."""
     from_list: GlossDictType = dataclasses.field(default_factory=dict)
     to_list: GlossDictType = dataclasses.field(default_factory=dict)
-    mapped: dict[str, dict[Literal["from_list", "to_list"], list[int]]] = dataclasses.field(
+    mapped: dict[str, dict[ListIdentifierType, list[int]]] = dataclasses.field(
         default_factory=lambda: collections.defaultdict(lambda: collections.defaultdict(list)))
 
-    def add(self, key, i, glosses, pos=None, frequency=None):  # pylint: disable=R0913,R0917
+    def add(self,   # pylint: disable=R0913,R0917
+            key: ListIdentifierType,
+            i: int,
+            glosses: Iterable[Gloss],
+            pos: Optional[Pos] = None,
+            frequency: Optional[int] = None):
+        """Add glosses associated with a concept list item."""
         if pos or frequency:
             for gloss in glosses:
                 gloss.pos = pos
@@ -350,41 +383,53 @@ class GlossMapper:
         for gloss in glosses:
             self.mapped[gloss.main][key] += [i]
 
-    def _iter_similarities(self, similarity_level) -> Generator[Similarity, None, None]:
+    def _iter_mapped_values(self) -> Generator[tuple[list[int], list[int]]]:
+        for v in self.mapped.values():
+            if all(arg in v for arg in get_args(ListIdentifierType)):
+                yield v['from_list'], v['to_list']
+
+    def _iter_similarpairs(
+            self,
+            similarity_level: Similarity,
+    ) -> Generator[SimilarPair, None, None]:
         # now that we have prepared all the glossed list as planned, we compare them item by
         # item and check for similarity
         for i, fglosses in self.from_list.items():
             for fgloss in fglosses:
                 for j, tglosses in self.to_list.items():
                     for tgloss in tglosses:
-                        sim = fgloss.similarity(tgloss).value
+                        sim = fgloss.similarity(tgloss)
                         if sim and sim <= similarity_level:
-                            yield Similarity(i, j, sim, tgloss.frequency)
+                            yield SimilarPair(i, j, sim, tgloss.frequency)
 
-    def best_matches(self, similarity_level) -> MappingDict:
+    def best_matches(self, similarity_level: Similarity) -> MappingDict:
+        """
+        The default matching implementation.
+        """
         # we keep track of which target concepts have already been chosen as best matches:
         best, consumed, alternatives = MappingDict(), set(), collections.defaultdict(list)
         # go through *all* matches from best to worst:
-        for sim in sorted(list(self._iter_similarities(similarity_level))):
-            if sim.from_key not in best and sim.to_key not in consumed:
-                best[sim.from_key] = Mapping([sim.to_key], sim.level)
-                consumed.add(sim.to_key)
-            elif sim.to_key not in alternatives[sim.from_key]:
-                alternatives[sim.from_key].append(sim.to_key)
+        for pair in sorted(list(self._iter_similarpairs(similarity_level))):
+            if  pair.from_key not in best and pair.to_key not in consumed:
+                best[pair.from_key] = Mapping([pair.to_key], pair.similarity)
+                consumed.add(pair.to_key)
+            elif pair.to_key not in alternatives[pair.from_key]:
+                alternatives[pair.from_key].append(pair.to_key)
         return best
 
     def best_matches_2(self) -> MappingDict:
+        """
+        An alternative matching implentation.
+        """
         mappings = MappingDict()
-        for v in self.mapped.values():
-            if not ('from_list' in v and 'to_list' in v):
-                continue
-            for i in v['from_list']:
+        for from_list, to_list in self._iter_mapped_values():
+            for i in from_list:
                 current = Mapping()
                 if i in mappings:
                     current = Mapping(mappings[i].to_keys, mappings[i].similarity)
-                for j in v['to_list']:
+                for j in to_list:
                     for gloss_a, gloss_b in itertools.product(self.from_list[i], self.to_list[j]):
-                        sim = gloss_a.similarity(gloss_b).value
+                        sim = gloss_a.similarity(gloss_b)
                         if sim < current.similarity:
                             current.to_keys = [j]
                             current.similarity = sim
@@ -394,14 +439,25 @@ class GlossMapper:
         return mappings
 
 
-def concept_map2(from_, to, freqs=None, language='en', **_):
+def concept_map2(
+        from_: Iterable[str],
+        to: Iterable[str],
+        freqs: Optional[dict[str, int]] = None,
+        language: Optional[str] = 'en',
+        **_,
+) -> MappingDict:
+    """
+    Match concepts from one list to the concepts of another one, optionally taking into account
+    frequencies.
+    """
     # extract glossing information from the data
     glosses = GlossMapper()
+    key: ListIdentifierType
+
     for l_, key in [(from_, 'from_list'), (to, 'to_list')]:
         for i, concept in enumerate(l_):
             glosses.add(key, i, parse_gloss(concept, language=language))
 
-    # get frequencies
     freqs = freqs or collections.defaultdict(int)
     mappings = glosses.best_matches_2()
     for m in mappings.values():
@@ -412,7 +468,7 @@ def concept_map2(from_, to, freqs=None, language='en', **_):
 def concept_map(
         from_: Iterable[Union[tuple[str, str, float], str]],
         to: Iterable[Union[tuple[str, str, float], str]],
-        similarity_level=5,
+        similarity_level: Similarity = Similarity.SAME_LONGEST,
         language='en',
 ) -> MappingDict:
     """
@@ -427,6 +483,7 @@ def concept_map(
     """
     # extract glossing information from the data
     glosses = GlossMapper()
+    key: ListIdentifierType
     for l_, key in [(from_, 'from_list'), (to, 'to_list')]:
         for i, concept in enumerate(l_):
             if isinstance(concept, tuple):

@@ -1,3 +1,5 @@
+import posix
+
 import pytest
 
 from pyconcepticon.glosses import *
@@ -40,29 +42,26 @@ def test_parse_gloss(g, res):
 
 
 def test_parse_gloss_2():
-    assert parse_gloss('the mountain or hill')[1].pos == 'noun'
-
-    g = Gloss.from_string('the mountain or hill')
-    assert g.tokens == 'the mountain hill'
+    assert parse_gloss('the mountain or hill')[1].pos == Pos.NOUN
 
     g1 = Gloss.from_string('der Berg', language='de')
     g2 = Gloss.from_string('Berg (n.)')
-    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN
+    assert g1.similarity(g2) == Similarity.SAME_MAIN
 
     g1 = Gloss.from_string('der Berg', language='de')
     g2 = Gloss.from_string('Berg')
-    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN_DIFFERENT_POS
+    assert g1.similarity(g2) == Similarity.SAME_MAIN_DIFFERENT_POS
 
     g1 = Gloss.from_string('der Berg a', language='de')
     g2 = Gloss.from_string('Berg b (n.)')
-    assert g1.similarity(g2) == SimilarityLevel.SAME_LONGEST
+    assert g1.similarity(g2) == Similarity.SAME_LONGEST
 
     g = Gloss.from_string('la montagne', language='fr')
-    assert g.pos == 'noun'
+    assert g.pos == Pos.NOUN
 
     g1 = Gloss.from_string('montagne', language='fr')
     g2 = Gloss.from_string('la montagne', language='fr')
-    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN_DIFFERENT_POS
+    assert g1.similarity(g2) == Similarity.SAME_MAIN_DIFFERENT_POS
 
     # error on invalid gloss
     with pytest.raises(ValueError):
