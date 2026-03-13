@@ -10,7 +10,12 @@ import collections
 from collections.abc import Iterable, Generator
 import dataclasses
 
-__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'Similarity', 'Pos']
+from .util import read_dicts, UnicodeWriter
+from ._compat import StrEnum
+
+__all__ = [
+    'parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'Similarity', 'Pos', 'map_list',
+    'GlossLanguage', 'MapOptions']
 
 
 class Pos(enum.Enum):
@@ -38,6 +43,43 @@ class Similarity(enum.IntEnum):
     LONGEST_IS_CONTAINED = 7
     LONGEST_CONTAINS = 8
     DIFFERENT = 100
+
+    @classmethod
+    def from_int(cls, n: int = 5) -> Optional['Similarity']:
+        """Get the enum symbol from its name."""
+        if isinstance(n, cls):
+            return n
+        for sim in cls:
+            if sim.value == n:
+                return sim
+        return None  # pragma: no cover
+
+
+class GlossLanguage(StrEnum):
+    """Languages used for glossing in conceptlists."""
+    FRENCH = 'fr'
+    ENGLISH = 'en'
+    SPANISH = 'es'
+    GERMAN = 'de'
+    POLISH = 'pl'
+    LATIN = 'lt'
+    CHINESE = 'zh'
+    PORTUGUESE = 'pt'
+    RUSSIAN = 'ru'
+    ITALIAN = 'it'
+
+    @classmethod
+    def from_string(cls, s: str = 'en') -> Optional['GlossLanguage']:
+        """Get the enum symbol from its name."""
+        if isinstance(s, cls):
+            return s
+        for lg in cls:
+            if lg.value == s:
+                return lg
+        return None  # pragma: no cover
+
+
+LanguageType = Union[str, GlossLanguage]
 
 
 @dataclasses.dataclass
@@ -103,8 +145,10 @@ class Gloss:  # pylint: disable=too-many-instance-attributes
         return Similarity.DIFFERENT
 
     @classmethod
-    def from_string(cls, s: str, language: str = 'en') -> 'Gloss':
+    def from_string(cls, s: str, language: LanguageType = GlossLanguage.ENGLISH) -> 'Gloss':
         """Parse a gloss from the string."""
+        if isinstance(language, str):
+            language = GlossLanguage.from_string(language)
         return parse_gloss(s, language=language)[0]
 
 
@@ -165,14 +209,19 @@ class ParseSpec:
         default_factory=lambda: {'(': ')', '[': ']', '{': '}', '（': '）', '<': '>'})
 
     @classmethod
-    def for_language(cls, language: Optional[str] = 'en') -> 'ParseSpec':
+    def for_language(
+            cls,
+            language: Optional[Union[str, GlossLanguage]] = GlossLanguage.ENGLISH,
+    ) -> 'ParseSpec':
         """Get a ParseSpec, optionally tuned to a particular gloss language."""
-        pos_markers = POS_MARKERS_BY_LANGUAGE.get(language, {})
+        if isinstance(language, str):
+            language = GlossLanguage.from_string(language)
+        pos_markers = POS_MARKERS_BY_LANGUAGE.get(language.value, {})
         pos_markers = {k: Pos.from_string(v) for k, v in pos_markers.items()}
         abbreviations = [(k, Pos.from_string(v)) for k, v in POS_ABBREVIATIONS]
         return cls(
             pos_markers,
-            PREFIXES_BY_LANGUAGE.get(language, []),
+            PREFIXES_BY_LANGUAGE.get(language.value, []),
             # Sort abbreviations by descending length.
             sorted(abbreviations, key=lambda x: len(x[0]), reverse=True),
         )
@@ -255,7 +304,7 @@ class ParseSpec:
         return None, gpos
 
 
-def parse_gloss(gloss: str, language='en') -> list[Gloss]:
+def parse_gloss(gloss: str, language: LanguageType = GlossLanguage.ENGLISH) -> list[Gloss]:
     """
     Parse a gloss into its constituents by applying some general logic.
 
@@ -443,7 +492,7 @@ def concept_map2(
         from_: Iterable[str],
         to: Iterable[str],
         freqs: Optional[dict[str, int]] = None,
-        language: Optional[str] = 'en',
+        language: Optional[LanguageType] = GlossLanguage.ENGLISH,
         **_,
 ) -> MappingDict:
     """
@@ -469,7 +518,7 @@ def concept_map(
         from_: Iterable[Union[tuple[str, str, float], str]],
         to: Iterable[Union[tuple[str, str, float], str]],
         similarity_level: Similarity = Similarity.SAME_LONGEST,
-        language='en',
+        language: Optional[LanguageType] = GlossLanguage.ENGLISH,
 ) -> MappingDict:
     """
     Function compares two concept lists and outputs suggestions for mapping.
@@ -494,3 +543,79 @@ def concept_map(
                 key, i, parse_gloss(concept, language=language), pos=pos, frequency=frequency)
 
     return glosses.best_matches(similarity_level)
+
+
+@dataclasses.dataclass
+class MapOptions:
+    """Bag of options informing the mapping of glosses."""
+    language: GlossLanguage = GlossLanguage.ENGLISH
+    full_search: bool = False
+    similarity_level: Similarity = Similarity.SAME_LONGEST
+    skip_multiple: bool = False
+
+    def __post_init__(self):
+        if isinstance(self.language, str):
+            self.language = GlossLanguage.from_string(self.language) or GlossLanguage.ENGLISH
+
+
+def map_list(
+        clist,
+        to,
+        out=None,
+        options: MapOptions = MapOptions(),
+):
+    """Map items in a conceptlist to concepticon."""
+    assert clist.exists(), f"File {clist} does not exist"
+    from_ = read_dicts(clist)
+
+    language = GlossLanguage.from_string(options.language)
+    gloss = language.name if language else 'GLOSS'
+    cmap: MappingDict = (concept_map if options.full_search else concept_map2)(
+        [i.get('GLOSS', i.get(gloss)) for i in from_],
+        [i[1] for i in to],
+        similarity_level=options.similarity_level,
+        language=language,
+    )
+    good_matches = 0
+
+    with UnicodeWriter(out) as writer:
+        writer.writerow(
+            list(from_[0].keys())
+            + ['CONCEPTICON_ID', 'CONCEPTICON_GLOSS', 'SIMILARITY'])
+        for i, item in enumerate(from_):
+            row = list(item.values())
+            mapping = cmap.get_mapping(i)
+            if mapping.similarity <= options.similarity_level:
+                good_matches += 1
+            _map_row(row, mapping, to, options, writer)
+        writer.writerow(
+            ['#', f'{good_matches}/{len(from_)}', f'{100 * good_matches / len(from_):.0f}%']
+            + (len(from_[0]) - 1) * [''])
+
+    if out is None:
+        print(writer.read().decode('utf-8'))
+
+
+def _map_row(row, mapping: Mapping, to, options: MapOptions, writer):
+    if not mapping.to_keys:
+        writer.writerow(row + ['', '???', ''])
+        return
+    if len(mapping.to_keys) == 1:
+        row.extend([
+            to[mapping.to_keys[0]][0],
+            to[mapping.to_keys[0]][1].split('///')[0],
+            mapping.similarity.value])
+        writer.writerow(row)
+        return
+    assert not options.full_search
+    # we need a list to retain the order by frequency
+    visited = []
+    for j in mapping.to_keys:
+        gls, cid = to[j][0], to[j][1].split('///')[0]
+        if (gls, cid) not in visited:
+            visited += [(gls, cid)]
+    if len(visited) > 1:
+        if not options.skip_multiple:
+            writer.writeblock(row + [gls, cid, mapping.similarity] for gls, cid in visited)
+    else:
+        writer.writerow(row + [visited[0][0], visited[0][1], mapping.similarity])

@@ -14,6 +14,10 @@ def test_ParseSpec_parse_constituent():
     assert gloss.comment == 'with (nested) comment'
 
 
+def test_Similarity():
+    assert Similarity.from_int(1) == Similarity.SAME
+
+
 @pytest.mark.parametrize(
     'g,res',
     [
