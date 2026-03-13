@@ -9,11 +9,11 @@ from pyconcepticon.util import rewrite, CS_GLOSS, CS_ID
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser)
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     cl = get_conceptlist(args, path_only=True)
     rewrite(cl, Linker(cl.stem, args.repos.conceptsets.values()))
 

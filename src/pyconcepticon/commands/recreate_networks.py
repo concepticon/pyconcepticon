@@ -10,7 +10,7 @@ from csvw.dsv import reader
 from pyconcepticon.models import CONCEPT_NETWORK_COLUMNS
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         '--download',
         action='store_true',
@@ -53,7 +53,7 @@ def diff(new, old):
                             print('++ {}'.format(idname(ii)))
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for cl in args.repos.conceptlists.values():
         d = cl.path.parent / cl.path.stem
         if d.exists() and d.is_dir():

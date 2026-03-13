@@ -4,7 +4,7 @@ Create metadata files for all conceptlists.
 from csvw import Column
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for cl in args.repos.conceptlists.values():
         mdpath = cl.path.parent.joinpath(cl.path.name + '-metadata.json')
         if not mdpath.exists():

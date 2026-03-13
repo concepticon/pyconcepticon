@@ -17,14 +17,14 @@ from pyconcepticon.util import SourcesCatalog
 from pyconcepticon.cli_util import readme
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         '--cdstar-catalog',
         default=os.environ.get("CDSTAR_CATALOG"),
         help='Path to global CDSTAR catalog')
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     toc = ["# Sources\n"]
     with SourcesCatalog(args.repos.data_path("sources", "cdstar.json")) as lcat:
         with Catalog(

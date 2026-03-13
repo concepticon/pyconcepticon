@@ -17,7 +17,7 @@ from pyconcepticon.util import read_dicts
 import json
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser, multiple=True)
     add_format(parser, default='simple')
     parser.add_argument(
@@ -51,7 +51,7 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     header, rows = args.weights, []
 
     for idx, item in enumerate(read_dicts(get_conceptlist(args, path_only=True)[0]), start=2):

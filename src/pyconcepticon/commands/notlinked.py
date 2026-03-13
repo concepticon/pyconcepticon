@@ -4,7 +4,7 @@ Find potential matches for unlinked glosses in all concept lists.
 import re
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         '--full',
         action='store_true',
@@ -29,7 +29,7 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     i, notlinked = 0, []
     for _, cl in sorted(args.repos.conceptlists.items(), key=lambda p: p[0]):
         if (not args.inid) or args.inid in cl.id:

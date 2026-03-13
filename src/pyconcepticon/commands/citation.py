@@ -10,7 +10,7 @@ from clldutils.jsonlib import dump
 from nameparser import HumanName
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument('--version', default=None)
     parser.add_argument('--year', default=date.today().year, type=int)
 
@@ -30,7 +30,7 @@ def zenodo_json(citation, version, editors):
     ])
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     if not args.version:  # pragma: no cover
         args.version = git_describe(args.repos.repos)
         if args.version.startswith('v'):

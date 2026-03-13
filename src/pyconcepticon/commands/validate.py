@@ -8,8 +8,8 @@ to be considered.
 """
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for cl in args.repos.conceptlists.values():
         items = list(cl.metadata)
         if set(items[0].keys()) != set(c.name for c in cl.metadata.tableSchema.columns):
-            print("unspecified column in concept list {0}".format(cl.id))
+            print(f"unspecified column in concept list {cl.id}")

@@ -10,7 +10,7 @@ from csvw import dsv
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser)
     parser.add_argument('column', metavar='COLUMN')
     parser.add_argument(
@@ -19,7 +19,7 @@ def register(parser):
         default=None)
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     dicts = list(dsv.reader(get_conceptlist(args, path_only=True), delimiter="\t", dicts=True))
     out_dict = collections.OrderedDict()
 

@@ -10,7 +10,7 @@ import collections
 from clldutils.clilib import Table, add_format
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_format(parser, default='simple')
     parser.add_argument(
         '--min-occurs',
@@ -20,7 +20,7 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     attrs = collections.Counter()
     for cl in args.repos.conceptlists.values():
         attrs.update(cl.attributes)

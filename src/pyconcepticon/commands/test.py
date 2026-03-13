@@ -9,7 +9,7 @@ procedure of adding a new list to Concepticon.
 """
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         'clids',
         metavar='CONCEPTLIST_ID',
@@ -17,7 +17,7 @@ def register(parser):
         nargs='*')
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     if args.repos.check(*args.clids):  # pragma: no cover
         args.log.info("all integrity tests passed: OK")
     else:  # pragma: no cover

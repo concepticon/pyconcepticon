@@ -9,7 +9,7 @@ from clldutils.markup import Table
 from pyconcepticon.cli_util import readme
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     cls = args.repos.conceptlists.values()
     readme_conceptlists(args.repos, cls, args)
     readme_concepticondata(args.repos, cls)

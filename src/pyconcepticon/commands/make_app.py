@@ -12,7 +12,7 @@ import collections
 from pyconcepticon import Concepticon
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument('--recreate', default=True, help=argparse.SUPPRESS)
 
 

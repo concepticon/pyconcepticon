@@ -21,7 +21,7 @@ from pyconcepticon.models import CONCEPT_NETWORK_COLUMNS
 import json
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser, multiple=True)
     add_format(parser, default='simple')
     parser.add_argument(
@@ -31,7 +31,7 @@ def register(parser):
         default=False)
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for cl in get_conceptlist(args, path_only=True):
         print(termcolor.colored(cl, attrs=['bold', 'underline']))
         items = list(enumerate(read_dicts(cl), start=2))

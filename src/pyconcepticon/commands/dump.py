@@ -8,7 +8,7 @@ import collections
 from csvw.dsv import UnicodeDictReader
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         "--destination",
         default=None,
@@ -16,7 +16,7 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     paths = {p.stem.split('-')[1]: p for p in args.repos.path(
         'mappings').glob('map-*.tsv')}
     translate = {

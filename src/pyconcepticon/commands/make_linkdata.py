@@ -11,7 +11,7 @@ import collections
 from csvw.dsv import UnicodeWriter
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for lang in args.repos.vocabularies["COLUMN_TYPES"].values():
         if getattr(lang, "iso2", None):
             _write_linking_data(args.repos, lang, args)

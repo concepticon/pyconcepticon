@@ -14,7 +14,7 @@ from clldutils import jsonlib
 from pyconcepticon.models import MD_SUFFIX, CONCEPTLIST_ID_PATTERN
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         'from_',
         metavar='FROM',
@@ -27,7 +27,7 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     if not CONCEPTLIST_ID_PATTERN.match(args.to):
         raise ParserError('Invalid conceptlist ID {0}'.format(args.to))  # pragma: no cover
     if args.to in args.repos.conceptlists:
