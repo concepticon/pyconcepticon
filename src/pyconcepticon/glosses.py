@@ -2,14 +2,27 @@
 Module provides functions for the handling of concept glosses in linguistic datasets.
 """
 import re
-from typing import Union, Literal, Callable, Any
+import enum
+from typing import Union, Literal, Callable, Any, Optional
 import functools
 import itertools
 import collections
 from collections.abc import Iterable, Generator
 import dataclasses
 
-__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping']
+__all__ = ['parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'SimilarityLevel']
+
+
+class SimilarityLevel(enum.Enum):
+    SAME = 1
+    SAME_DIFFERENT_POS = 2
+    SAME_MAIN = 3
+    SAME_MAIN_DIFFERENT_POS = 4
+    SAME_LONGEST = 5
+    SAME_LONGEST_DIFFERENT_POS = 6
+    LONGEST_IS_CONTAINED = 7
+    LONGEST_CONTAINS = 8
+    DIFFERENT = 100
 
 
 @dataclasses.dataclass
@@ -43,28 +56,183 @@ class Gloss:
     def tokens(self):
         return ' '.join(s for s in self.gloss.split() if s not in ['or'])
 
-    def similarity(self, other):
+    def similarity(self, other) -> SimilarityLevel:
+        same_pos = self.pos and self.pos == other.pos
         # first-order-match: identical glosses
         if self.gloss == other.gloss:
-            if self.pos and self.pos == other.pos:
-                return 1
-            return 2
+            if same_pos:
+                return SimilarityLevel.SAME
+            return SimilarityLevel.SAME_DIFFERENT_POS
         # second-order match: identical main-parts
-        if self.main == other.gloss or self.gloss == other.main or\
-                self.main == other.main:
+        if self.main == other.gloss or self.gloss == other.main or self.main == other.main:
             # best match if pos matches
-            return 3 if self.pos and self.pos == other.pos else 4
+            if same_pos:
+                return SimilarityLevel.SAME_MAIN
+            return SimilarityLevel.SAME_MAIN_DIFFERENT_POS
         if self.longest_part == other.longest_part:
-            return 5 if self.pos and self.pos == other.pos else 6
+            if same_pos:
+                return SimilarityLevel.SAME_LONGEST
+            return SimilarityLevel.SAME_LONGEST_DIFFERENT_POS
         if other.longest_part in self.main.split():
-            return 7
+            return SimilarityLevel.LONGEST_IS_CONTAINED
         if self.longest_part in other.main.split():
-            return 8
-        return 100
+            return SimilarityLevel.LONGEST_CONTAINS
+        return SimilarityLevel.DIFFERENT
 
     @classmethod
     def from_string(cls, s, language='en'):
         return parse_gloss(s, language=language)[0]
+
+
+class Pos(enum.Enum):
+    NOUN = enum.auto()
+    VERB = enum.auto()
+    ADJECTIVE = enum.auto()
+    ADVERB = enum.auto()
+    CLASSIFIER = enum.auto()
+
+    @classmethod
+    def from_string(cls, s):
+        return getattr(cls, s.upper())
+
+
+POS_MARKERS_BY_LANGUAGE = {
+    'en': {'the': 'noun', 'a': 'noun', 'to': 'verb'},
+    'de': {'der': 'noun', 'die': 'noun', 'das': 'noun'},
+    'fr': {
+        'le': 'noun',
+        'la': 'noun',
+        'les': 'noun',
+        'du': 'noun',
+        'des': 'noun',
+        'de': 'noun',
+        'un': 'noun',
+        'une': 'noun',
+    },
+    'es': {
+        "el": "noun",
+        "la": "noun",
+        "los": "noun",
+        "mi": "noun",
+        "un": "noun",
+        "una": "noun",
+        "unos": "noun",
+        "las": "noun",
+        "su": "noun",
+    }
+}
+PREFIXES_BY_LANGUAGE = {
+    'en': ['be', 'in', 'at'],
+    'fr': ['il', 'est'],
+    'es': ["lo", "les", "le"],
+}
+POS_ABBREVIATIONS = [
+    ('vb', 'verb'),
+    ('v.', 'verb'),
+    ('v', 'verb'),
+    ('adj', 'adjective'),
+    ('nn', 'noun'),
+    ('n.', 'noun'),
+    ('adv', 'adverb'),
+    ('noun', 'noun'),
+    ('verb', 'verb'),
+    ('adjective', 'adjective'),
+    ('cls', 'classifier')
+]
+
+
+@dataclasses.dataclass
+class ParseSpec:
+    pos_markers: dict[str, Pos]
+    prefixes: list[str]
+    pos_abbreviations: list[tuple[str, Pos]]
+    punctuation: str = '?!"¨:;,»«´“”*+-'
+    split_pattern: re.Pattern = re.compile(r',|;|:|/| or | OR ')
+    comment_marker: dict[str, str] = dataclasses.field(
+        default_factory=lambda: {'(': ')', '[': ']', '{': '}', '（': '）', '<': '>'})
+
+    @classmethod
+    def for_language(cls, language='en'):
+        pos_markers = POS_MARKERS_BY_LANGUAGE.get(language, {})
+        pos_markers = {k: Pos.from_string(v) for k, v in pos_markers.items()}
+        abbreviations = [(k, Pos.from_string(v)) for k, v in POS_ABBREVIATIONS]
+        return cls(
+            pos_markers,
+            PREFIXES_BY_LANGUAGE.get(language, []),
+            # Sort abbreviations by descending length.
+            sorted(abbreviations, key=lambda x: len(x[0]), reverse=True),
+        )
+
+    def split_constituents(self, gloss):
+        """
+        >>> spec = ParseSpec.for_language('en')
+        >>> spec.split_constituents('arm OR hand')
+        ['arm', 'hand', 'arm / hand']
+        """
+        constituents = [x.strip() for x in self.split_pattern.split(gloss) if x.strip()]
+        if len(constituents) > 1:
+            constituents += [' / '.join(sorted([c.strip() for c in constituents]))]
+        return constituents
+
+    def _strip_comments(self, constituent: str, res: Gloss) -> str:
+        mainpart = ''
+        in_comment: list[str] = []
+        for char in constituent:
+            if char in self.comment_marker:
+                in_comment.append(self.comment_marker[char])
+                if not res.comment_start:
+                    res.comment_start = char
+                else:
+                    res.comment += char
+                continue
+            if in_comment and char == in_comment[-1]:
+                in_comment.pop()
+                if not in_comment:
+                    res.comment_end = char
+                else:
+                    res.comment += char
+                continue
+            if in_comment:
+                res.comment += char
+            else:
+                mainpart += char
+        return mainpart
+
+    def _strip_punctuation(self, s: str) -> str:
+        return ''.join(c for c in s if c not in self.punctuation)
+
+    def parse_constituent(self, full_gloss, constituent, gpos) -> tuple[Optional[Gloss], str]:
+        gloss = Gloss(gloss=full_gloss)
+        mainpart = self._strip_comments(constituent, gloss)
+        mainpart = self._strip_punctuation(mainpart).strip().lower().split()
+
+        # search for pos-markers
+        if gpos:
+            gloss.pos = gpos
+        else:
+            if len(mainpart) > 1 and mainpart[0] in self.pos_markers:
+                gpos = gloss.pos = self.pos_markers[mainpart.pop(0)].name.lower()
+
+        # search for strip-off-prefixes
+        if len(mainpart) > 1 and mainpart[0] in self.prefixes:
+            gloss.prefix = mainpart.pop(0)
+
+        if mainpart:
+            # check for a "first part" in case we encounter white space in the
+            # data (and return only the largest string of them)
+            gloss.longest_part = sorted(mainpart, key=lambda x: len(x))[-1]
+
+            # search for pos in comment
+            if not gloss.pos:
+                cparts = gloss.comment.split()
+                for p, t in self.pos_abbreviations:
+                    if p in cparts or p in mainpart or t.name in cparts or t.name in mainpart:
+                        gloss.pos = t.name.lower()
+                        break
+
+            gloss.main = ' '.join(mainpart)
+            return gloss, gpos
+        return None, gpos
 
 
 def parse_gloss(gloss: str, language='en') -> list[Gloss]:
@@ -107,53 +275,8 @@ def parse_gloss(gloss: str, language='en') -> list[Gloss]:
     and may thus help to compare different glosses across different resources.
     """
     if not gloss:
-        print(gloss)
         raise ValueError("Your gloss is empty")
-    G = []
-    gpos = ''
-    pos_markers = {
-        'en': {'the': 'noun', 'a': 'noun', 'to': 'verb'},
-        'de': {'der': 'noun', 'die': 'noun', 'das': 'noun'},
-        'fr': {
-            'le': 'noun',
-            'la': 'noun',
-            'les': 'noun',
-            'du': 'noun',
-            'des': 'noun',
-            'de': 'noun',
-            'un': 'noun',
-            'une': 'noun',
-        },
-        'es': {
-            "el": "noun",
-            "la": "noun",
-            "los": "noun",
-            "mi": "noun",
-            "un": "noun",
-            "una": "noun",
-            "unos": "noun",
-            "las": "noun",
-            "su": "noun",
-        }
-    }.get(language, {})
-    prefixes = {
-        'en': ['be', 'in', 'at'],
-        'fr': ['il', 'est'],
-        'es': ["lo", "les", "le"],
-    }.get(language, [])
-    abbreviations = [
-        ('vb', 'verb'),
-        ('v.', 'verb'),
-        ('v', 'verb'),
-        ('adj', 'adjective'),
-        ('nn', 'noun'),
-        ('n.', 'noun'),
-        ('adv', 'adverb'),
-        ('noun', 'noun'),
-        ('verb', 'verb'),
-        ('adjective', 'adjective'),
-        ('cls', 'classifier')
-    ]
+    spec = ParseSpec.for_language(language)
 
     # we use /// as our internal marker for glosses preceded by concepticon
     # gloss information and followed by literal readings
@@ -162,60 +285,17 @@ def parse_gloss(gloss: str, language='en') -> list[Gloss]:
 
     # if the gloss consists of multiple parts, we store both the separate part
     # and a normalized form of the full gloss
-    constituents = [x.strip() for x in re.split(',|;|:|/| or | OR ', gloss) if x.strip()]
-    if len(constituents) > 1:
-        constituents += [' / '.join(sorted([c.strip() for c in constituents]))]
+    constituents = spec.split_constituents(gloss)
 
+    glosses = []
+    gpos = ''
     for constituent in constituents:
         if constituent.strip():
-            res = Gloss(gloss=gloss)
-            mainpart = ''
-            in_comment = False
-            for char in constituent:
-                if char in '([{（<':
-                    in_comment = True
-                    res.comment_start += char
-                elif char in ')]}）>':
-                    in_comment = False
-                    res.comment_end += char
-                else:
-                    if in_comment:
-                        res.comment += char
-                    else:
-                        mainpart += char
+            res, gpos = spec.parse_constituent(gloss, constituent, gpos)
+            if res:
+                glosses.append(res)
 
-            mainpart = ''.join(m for m in mainpart if m not in '?!"¨:;,»«´“”*+-')\
-                .strip().lower().split()
-
-            # search for pos-markers
-            if gpos:
-                res.pos = gpos
-            else:
-                if len(mainpart) > 1 and mainpart[0] in pos_markers:
-                    gpos = res.pos = pos_markers[mainpart.pop(0)]
-
-            # search for strip-off-prefixes
-            if len(mainpart) > 1 and mainpart[0] in prefixes:
-                res.prefix = mainpart.pop(0)
-
-            if mainpart:
-                # check for a "first part" in case we encounter white space in the
-                # data (and return only the largest string of them)
-                res.longest_part = sorted(mainpart, key=lambda x: len(x))[-1]
-
-                # search for pos in comment
-                if not res.pos:
-                    cparts = res.comment.split()
-                    for p, t in sorted(
-                            abbreviations, key=lambda x: len(x[0]), reverse=True):
-                        if p in cparts or p in mainpart or t in cparts or t in mainpart:
-                            res.pos = t
-                            break
-
-                res.main = ' '.join(mainpart)
-                G.append(res)
-
-    return G
+    return glosses
 
 
 GlossDictType = dict[int, list[Gloss]]
@@ -241,7 +321,7 @@ class Similarity:
 @dataclasses.dataclass
 class Mapping:
     to_keys: Union[list[int]] = dataclasses.field(default_factory=list)
-    similarity: int = 100
+    similarity: int = SimilarityLevel.DIFFERENT.value
 
     def sort_keys(self, sortkey: Callable[[int], Any]):
         self.to_keys = sorted(self.to_keys, key=sortkey, reverse=True)
@@ -277,7 +357,7 @@ class GlossMapper:
             for fgloss in fglosses:
                 for j, tglosses in self.to_list.items():
                     for tgloss in tglosses:
-                        sim = fgloss.similarity(tgloss)
+                        sim = fgloss.similarity(tgloss).value
                         if sim and sim <= similarity_level:
                             yield Similarity(i, j, sim, tgloss.frequency)
 
@@ -304,7 +384,7 @@ class GlossMapper:
                     current = Mapping(mappings[i].to_keys, mappings[i].similarity)
                 for j in v['to_list']:
                     for gloss_a, gloss_b in itertools.product(self.from_list[i], self.to_list[j]):
-                        sim = gloss_a.similarity(gloss_b) or 10
+                        sim = gloss_a.similarity(gloss_b).value
                         if sim < current.similarity:
                             current.to_keys = [j]
                             current.similarity = sim

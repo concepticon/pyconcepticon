@@ -1,6 +1,15 @@
 import pytest
 
 from pyconcepticon.glosses import *
+from pyconcepticon.glosses import ParseSpec
+
+
+def test_ParseSpec_parse_constituent():
+    spec = ParseSpec.for_language('en')
+    gloss, pos = spec.parse_constituent('full gloss', 'word [with (nested) comment]', '')
+    assert gloss.comment_start == '['
+    assert gloss.comment_end == ']'
+    assert gloss.comment == 'with (nested) comment'
 
 
 @pytest.mark.parametrize(
@@ -37,15 +46,23 @@ def test_parse_gloss_2():
     assert g.tokens == 'the mountain hill'
 
     g1 = Gloss.from_string('der Berg', language='de')
+    g2 = Gloss.from_string('Berg (n.)')
+    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN
+
+    g1 = Gloss.from_string('der Berg', language='de')
     g2 = Gloss.from_string('Berg')
-    assert g1.similarity(g2) == 4
+    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN_DIFFERENT_POS
+
+    g1 = Gloss.from_string('der Berg a', language='de')
+    g2 = Gloss.from_string('Berg b (n.)')
+    assert g1.similarity(g2) == SimilarityLevel.SAME_LONGEST
 
     g = Gloss.from_string('la montagne', language='fr')
     assert g.pos == 'noun'
 
     g1 = Gloss.from_string('montagne', language='fr')
     g2 = Gloss.from_string('la montagne', language='fr')
-    assert g1.similarity(g2) == 4
+    assert g1.similarity(g2) == SimilarityLevel.SAME_MAIN_DIFFERENT_POS
 
     # error on invalid gloss
     with pytest.raises(ValueError):
