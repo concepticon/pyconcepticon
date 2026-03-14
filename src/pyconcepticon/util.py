@@ -15,7 +15,7 @@ from clldutils import jsonlib
 from csvw import dsv
 
 __all__ = [
-    'natural_sort', 'to_dict', 'SourcesCatalog', 'UnicodeWriter', 'read_dicts',
+    'natural_sort', 'to_dict', 'SourcesCatalog', 'UnicodeWriter', 'reader', 'read_dicts',
     'ConceptlistWithNetworksWriter']
 
 T = TypeVar('T')
@@ -74,6 +74,12 @@ def read_dicts(fname: PathType, schema=None, **kw) -> list[dict[str, Union[str, 
             colspec[col['name']] = conv or identity
         res = [{k: colspec.get(k, identity)(v) for k, v in d.items()} for d in res]
     return res
+
+
+def reader(p, **kw):
+    """Convenience wrapper prepping dsv.reader for tab-separated values."""
+    kw.setdefault('delimiter', '\t')
+    return dsv.reader(p, **kw)
 
 
 class UnicodeWriter(dsv.UnicodeWriter):

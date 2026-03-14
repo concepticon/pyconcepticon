@@ -258,7 +258,7 @@ class Conceptlist(Bag):  # pylint: disable=R0902
 
         if self.author.count(',') > 1 and (not any(s in self.author for s in [' and ', ' AND '])):
             raise ValueError(f'invalid format for multiple authors: {self.author}')
-        if any(len(self.author) > 200 for s in re.split(r'\s+(?:and|AND)\s+', self.author)):
+        if any(len(s) > 200 for s in re.split(r'\s+(?:and|AND)\s+', self.author)):
             raise ValueError(f'suspiciously long author name in {self.author}')
 
         self.year = int(self.year)

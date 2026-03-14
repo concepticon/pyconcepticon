@@ -43,6 +43,6 @@ def run(args):  # pylint: disable=C0116
 
         for key in sorted(lcat.items):
             spec = lcat.get(key)
-            toc.append("- [{0} [PDF {1}]]({2})".format(key, format_size(spec["size"]), spec["url"]))
+            toc.append(f'- [{key} [PDF {format_size(spec["size"])}]]({spec["url"]})')
 
     readme(args.repos.data_path("sources"), toc)

@@ -459,7 +459,7 @@ class GlossMapper:
         best, consumed, alternatives = MappingDict(), set(), collections.defaultdict(list)
         # go through *all* matches from best to worst:
         for pair in sorted(list(self._iter_similarpairs(similarity_level))):
-            if  pair.from_key not in best and pair.to_key not in consumed:
+            if pair.from_key not in best and pair.to_key not in consumed:
                 best[pair.from_key] = Mapping([pair.to_key], pair.similarity)
                 consumed.add(pair.to_key)
             elif pair.to_key not in alternatives[pair.from_key]:

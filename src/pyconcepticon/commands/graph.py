@@ -26,11 +26,6 @@ def register(parser):  # pylint: disable=C0116
         default="LINKED_CONCEPTS",
         help="specify the column containing linked concepts")
     parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='print check descriptions',
-        default=False)
-    parser.add_argument(
         "--threshold",
         action='store',
         type=int,

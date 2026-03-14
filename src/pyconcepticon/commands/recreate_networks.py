@@ -4,10 +4,13 @@ Recreate the concept lists containing network data.
 import json
 import shutil
 import subprocess
-
-from csvw.dsv import reader
+import dataclasses
+from typing import Any, Union
+import collections
+from collections.abc import Sequence
 
 from pyconcepticon.models import CONCEPT_NETWORK_COLUMNS
+from pyconcepticon.util import reader
 
 
 def register(parser):  # pylint: disable=C0116
@@ -23,34 +26,66 @@ def register(parser):  # pylint: disable=C0116
         help="Do not overwrite lists, but compute diff")
 
 
-def idname(t):
-    d = dict(t)
-    rem = '\t'.join('{}: {}'.format(k, v) for k, v in t if k not in ['ID', 'NAME'])
-    return '{}\t{}\t{}'.format(d['ID'], d.get('NAME', ''), rem)
+# A dict represented as sequence of key-value pairs.
+HashableDictType = Sequence[tuple[str, Union[str, int, float, Sequence[Union[str, int, float]]]]]
+ComparableJsonType = set[HashableDictType]
+RowIdColNameType = tuple[str, str]
 
 
-def hashable_dict(d):
-    return tuple(sorted([(k, tuple(v) if isinstance(v, list) else v) for k, v in d.items()]))
+@dataclasses.dataclass
+class NetworkDiffer:
+    """
+    >>> d = NetworkDiffer()
+    >>> d.add_pair('row', 'col', '[{"ID": 5},{"ID": 3}]', '[{"ID": 3},{"ID": 7}]')
+    >>> for r, c, old, new in d.iter_diff():
+    ...     print(old - new)
+    ...     print(new - old)
+    ...
+    {(('ID', 5),)}
+    {(('ID', 7),)}
+    """
+    pairs: collections.OrderedDict[
+        RowIdColNameType, tuple[ComparableJsonType, ComparableJsonType]
+    ] = dataclasses.field(default_factory=collections.OrderedDict)
+
+    @staticmethod
+    def _hashable_dicts(jsonval) -> set[HashableDictType]:
+        return set(
+            tuple(sorted([(k, tuple(v) if isinstance(v, list) else v) for k, v in d.items()]))
+            for d in json.loads(jsonval or '[]'))
+
+    def add_pair(self, rowid, col, jsonval1, jsonval2):
+        self.pairs[rowid, col] = (self._hashable_dicts(jsonval1), self._hashable_dicts(jsonval2))
+
+    def iter_diff(self):
+        for (rowid, col), (old, new) in self.pairs.items():
+            if old != new:
+                yield (
+                    rowid,
+                    col,
+                    [collections.OrderedDict(i) for i in old - new],
+                    [collections.OrderedDict(i) for i in new - old])
 
 
 def diff(new, old):
-    old = {r['ID']: r for r in reader(old, dicts=True, delimiter='\t')}
-    new = {r['ID']: r for r in reader(new, dicts=True, delimiter='\t')}
-
-    for k, i1 in old.items():
-        i2 = new[k]
+    differ = NetworkDiffer()
+    new = {r['ID']: r for r in reader(new, dicts=True)}
+    for oldrow in reader(old, dicts=True):
         for col in CONCEPT_NETWORK_COLUMNS:
-            if col in i1:
-                v1 = set(hashable_dict(i) for i in json.loads(i1[col] or '[]'))
-                v2 = set(hashable_dict(i) for i in json.loads(i2[col] or '[]'))
-                if v1 != v2:
-                    print('== {}\t{}'.format(k, col))
-                    for ii in v1:
-                        if ii not in v2:
-                            print('-- {}'.format(idname(ii)))
-                    for ii in v2:
-                        if ii not in v1:
-                            print('++ {}'.format(idname(ii)))
+            if col in oldrow:
+                differ.add_pair(oldrow['ID'], col, oldrow[col], new[oldrow['ID']][col])
+
+    def idname(d: collections.OrderedDict[str, Any]) -> str:
+        """Format"""
+        rem = '\t'.join(f'{k}: {v}' for k, v in d.items() if k not in ['ID', 'NAME'])
+        return f'{d.get("ID", "")}\t{d.get("NAME", "")}\t{rem}'
+
+    for rowid, col, minus, plus in differ.iter_diff():
+        print(f'== {rowid}\t{col}')
+        for ii in minus:
+            print(f'-- {idname(ii)}')
+        for ii in plus:
+            print(f'++ {idname(ii)}')
 
 
 def run(args):  # pylint: disable=C0116

@@ -35,7 +35,8 @@ def test_citation(capsys, _main, tmprepos):
 def test_recreate_networks(capsys, _main):
     _main('recreate_networks', '--diff')
     out, _ = capsys.readouterr()
-    assert 'Sun-1991-1004-79' in out
+    assert '-- Sun-1991-1004-83' in out
+    assert '++ Sun-1991-1004-87' in out
     _main('recreate_networks')
 
 
@@ -59,6 +60,12 @@ def test_rename(capsys, _main, tmprepos):
     _main('create_metadata')
     _main('rename', 'Sun-1991-1004', 'Moon-2011-234')
     assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
+    for d in read_all(tmprepos.joinpath('concepticondata', 'conceptlists.tsv')):
+        assert 'Sun-1991-1004' not in str(d)
+        if d['ID'] == 'Moon-2011-234':
+            break
+    else:
+        assert False, 'New ID not found!'  # pragma: no cover
 
 
 def test_graph(capsys, _main, tmprepos):

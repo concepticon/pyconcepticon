@@ -10,7 +10,7 @@ from clldutils.clilib import ParserError
 from pyconcepticon.models import Conceptlist
 
 
-def readme(outdir, text):
+def readme(outdir, text: Union[str, list[str]]):
     """Write text to a README in outdir."""
     outdir.joinpath("README.md").write_text(
         "\n".join(text) if isinstance(text, list) else text, encoding="utf8")
