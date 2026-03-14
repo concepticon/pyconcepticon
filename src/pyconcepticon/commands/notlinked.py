@@ -38,6 +38,7 @@ def run(args):  # pylint: disable=C0116
                     key=lambda p: int(re.match('([0-9]+)', p.number).groups()[0])):
                 if not concept.concepticon_id:
                     notlinked.append(concept)
+
     to = [('1', args.gloss)] if args.gloss else None
     for j, matches in enumerate(args.repos.lookup(
             [c.label for c in notlinked], full_search=not args.full, to=to)):
@@ -46,4 +47,4 @@ def run(args):  # pylint: disable=C0116
             cid, cgl = candidates[0][2:4]
             if cgl <= args.similarity_threshold:
                 i += 1
-                print('{0} {1.id}: {1.label}: {2} [{3}]'.format(i, notlinked[j], cid, cgl))
+                print(f'{i} {notlinked[j].id}: {notlinked[j].label}: {cid} [{cgl}]')

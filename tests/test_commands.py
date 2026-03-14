@@ -101,7 +101,7 @@ def test_make_linkdata(tmprepos, _main, caplog):
     with caplog.at_level(logging.INFO):
         _main('make_linkdata')
     assert caplog.records
-    assert 'checking' in caplog.records[-1].message
+    assert 'Languoid' in caplog.records[-1].message
     assert tmprepos.joinpath('mappings').exists()
 
 
