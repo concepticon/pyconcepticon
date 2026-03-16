@@ -20,6 +20,6 @@ def run(args):  # pylint: disable=C0116
             for col in cl.cols_in_list:
                 if col not in cols_in_md:
                     cl.metadata.tableSchema.columns.append(
-                        Column.fromvalue(dict(name=col, datatype='string')))
+                        Column.fromvalue({'name': col, 'datatype': 'string'}))
 
             cl.tg.to_file(mdpath)
