@@ -35,7 +35,8 @@ def test_citation(capsys, _main, tmprepos):
 def test_recreate_networks(capsys, _main):
     _main('recreate_networks', '--diff')
     out, _ = capsys.readouterr()
-    assert 'Sun-1991-1004-79' in out
+    assert '-- Sun-1991-1004-83' in out
+    assert '++ Sun-1991-1004-87' in out
     _main('recreate_networks')
 
 
@@ -59,6 +60,12 @@ def test_rename(capsys, _main, tmprepos):
     _main('create_metadata')
     _main('rename', 'Sun-1991-1004', 'Moon-2011-234')
     assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
+    for d in read_all(tmprepos.joinpath('concepticondata', 'conceptlists.tsv')):
+        assert 'Sun-1991-1004' not in str(d)
+        if d['ID'] == 'Moon-2011-234':
+            break
+    else:
+        assert False, 'New ID not found!'  # pragma: no cover
 
 
 def test_graph(capsys, _main, tmprepos):
@@ -94,7 +101,7 @@ def test_make_linkdata(tmprepos, _main, caplog):
     with caplog.at_level(logging.INFO):
         _main('make_linkdata')
     assert caplog.records
-    assert 'checking' in caplog.records[-1].message
+    assert 'Languoid' in caplog.records[-1].message
     assert tmprepos.joinpath('mappings').exists()
 
 
@@ -117,7 +124,6 @@ def test_check(api, capsys, tmp_path, _main):
     test.write_text(t.replace('Sun-1991-1004-1', 'Sun-1991-1004-2'), encoding='utf8')
     _main('check', str(test))
     out, err = capsys.readouterr()
-    print(out)
     assert 'Sun-1991-1004-2 ' in out
 
 
@@ -141,7 +147,7 @@ def test_link(fixturedir, tmp_path, capsys, _main):
         _main('link', '.')
 
     def nattr(p, attr):
-        return len(nfilter([getattr(i, attr, None) for i in read_all(str(p))]))
+        return len(nfilter([i.get(attr) for i in read_all(str(p))]))
 
     test = tmp_path / 'test.tsv'
     shutil.copy(fixturedir.joinpath('conceptlist.tsv'), test)

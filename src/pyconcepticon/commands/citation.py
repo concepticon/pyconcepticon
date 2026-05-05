@@ -10,18 +10,18 @@ from clldutils.jsonlib import dump
 from nameparser import HumanName
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument('--version', default=None)
     parser.add_argument('--year', default=date.today().year, type=int)
 
 
-def zenodo_json(citation, version, editors):
+def zenodo_json(citation, version, editors):  # pylint: disable=C0116
     return collections.OrderedDict([
         ("upload_type", "dataset"),
-        ("description", "<p>{}</p>".format(html.escape(citation))),
+        ("description", f"<p>{html.escape(citation)}</p>"),
         ("alternate_identifiers",
          [{"scheme": "url", "identifier": "https://concepticon.clld.org"}]),
-        ("title", "CLLD Concepticon {}".format(version.replace('v', ''))),
+        ("title", f"CLLD Concepticon {version.replace('v', '')}"),
         ("access_right", "open"),
         ("license", {"id": "CC-BY-4.0"}),
         ("keywords", ["linguistics"]),
@@ -30,7 +30,7 @@ def zenodo_json(citation, version, editors):
     ])
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     if not args.version:  # pragma: no cover
         args.version = git_describe(args.repos.repos)
         if args.version.startswith('v'):
@@ -41,12 +41,11 @@ def run(args):
     editor_names = []
     for e in current_editors:
         name = HumanName(e.name)
-        editor_names.append('{0.last}, {0.first} {0.middle}'.format(name).strip())
+        editor_names.append(f'{name.last}, {name.first} {name.middle}'.strip())
     editor_names = ' & '.join(editor_names)
-    res = "{0} (eds.) {1.year}. {2.title} {1.version}. {2.description}. "\
-        "{2.publisher.place}: {2.publisher.name}. Available online at {2.url}".format(
-            editor_names, args, args.repos.dataset_metadata,
-        )
+    md = args.repos.dataset_metadata
+    res = (f"{editor_names} (eds.) {args.year}. {md.title} {args.version}. {md.description}. "
+           f"{md.publisher.place}: {md.publisher.name}. Available online at {md.url}")
     print(res)
     dump(
         zenodo_json(res, args.version, current_editors),

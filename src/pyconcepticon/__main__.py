@@ -11,9 +11,13 @@ The basic invocation looks like
     concepticon [OPTIONS] <command> [args]
 
 """
+import logging
 import sys
 import pathlib
+import argparse
 import contextlib
+from typing import Optional
+from collections.abc import Sequence
 
 from clldutils.clilib import register_subcommands, get_parser_and_subparsers, ParserError
 from clldutils.loglib import Logging
@@ -23,7 +27,12 @@ from pyconcepticon import Concepticon
 import pyconcepticon.commands
 
 
-def main(args=None, catch_all=False, parsed_args=None, log=None):
+def main(  # pylint: disable=C0116
+        args: Optional[Sequence[str]] = None,
+        catch_all: bool = False,
+        parsed_args: Optional[argparse.Namespace] = None,
+        log: Optional[logging.Logger] = None,
+) -> Optional[int]:
     repos = None
     try:
         repos = cldfcatalog.Config.from_file().get_clone('concepticon')
@@ -58,14 +67,14 @@ def main(args=None, catch_all=False, parsed_args=None, log=None):
             # use of a Catalog as context manager:
             stack.enter_context(cldfcatalog.Catalog(args.repos, tag=args.repos_version))
         args.repos = Concepticon(args.repos)
-        args.log.info('concepticon/concepticon-data at {0}'.format(args.repos.repos))
+        args.log.info(f'concepticon/concepticon-data at {args.repos.repos}')
         try:
             return args.main(args) or 0
         except KeyboardInterrupt:  # pragma: no cover
             return 0
         except ParserError as e:
             print(e)
-            return main([args._command, '-h'])
+            return main([args._command, '-h'])  # pylint: disable=W0212
         except Exception as e:  # pragma: no cover
             if catch_all:
                 print(e)

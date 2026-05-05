@@ -6,7 +6,7 @@ from clldutils.clilib import Table, add_format
 from pyconcepticon.cli_util import add_search
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument('gloss', metavar='GLOSS', nargs='+')
     add_format(parser, default='simple')
     parser.add_argument(
@@ -17,7 +17,7 @@ def register(parser):
     add_search(parser)
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     found = args.repos.lookup(
         args.gloss,
         language=args.language,

@@ -11,6 +11,11 @@ tox -r
 flake8 src
 ```
 
+- Make sure pylint report a score of 10:
+```shell
+pylint src
+```
+
 - Update the version number, by removing the trailing `.dev0` in:
   - `setup.cfg`
   - `src/pyconcepticon/__init__.py`

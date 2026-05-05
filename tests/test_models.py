@@ -11,7 +11,7 @@ def sun1991(tmprepos):
 def test_Conceptlist(sun1991, api):
     def kw(**kwargs):
         res = dict(
-            api=api,
+            _api=api,
             id='Abc-1234-12',
             author='Some One',
             year='1234',

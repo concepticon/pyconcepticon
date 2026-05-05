@@ -6,21 +6,25 @@ Notes
 map* files contain lists of all concept-to-word-in-language mappings
 available within Concepticon.
 """
+import functools
 import collections
 
-from csvw.dsv import UnicodeWriter
+from pyconcepticon.util import UnicodeWriter
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
+    rep = _current_conceptsets(args.repos)
     for lang in args.repos.vocabularies["COLUMN_TYPES"].values():
         if getattr(lang, "iso2", None):
-            _write_linking_data(args.repos, lang, args)
+            args.log.info(lang)
+            _write_linking_data(args.repos, lang, rep)
 
 
-def _write_linking_data(api, lang, args):
-    out, freqs = collections.defaultdict(int), collections.defaultdict(int)
-    # find those concept sets that are wrongly linked, they should not go into
-    # the mapping, so we just make a re-linker here
+def _current_conceptsets(api):
+    """
+    find those concept sets that are wrongly linked, they should not go into
+    the mapping, so we just make a re-linker here
+    """
     rep = {}
     for c in api.conceptsets.values():
         if c.replacement_id:
@@ -29,9 +33,18 @@ def _write_linking_data(api, lang, args):
         else:
             rep[c.id] = c.id
             rep[c.gloss] = c.gloss
+    return rep
+
+
+def _local_gloss(rep, concepticon_gloss, local):
+    return f'{rep[concepticon_gloss]}///{local}'
+
+
+def _get_frequencies(api, lang, rep):
+    out, freqs = collections.defaultdict(int), collections.defaultdict(int)
+    local_gloss = functools.partial(_local_gloss, rep)
 
     for clist in api.conceptlists.values():
-        args.log.info("checking {clist.id}".format(clist=clist))
         for row in clist.concepts.values():
             if row.concepticon_id:
                 gls = None
@@ -43,29 +56,34 @@ def _write_linking_data(api, lang, args):
                         gls = row.attributes[lang.name].strip("*$-—+")
 
                 if gls:
-                    out[rep[row.concepticon_gloss] + "///" + gls, rep[row.concepticon_id]] += 1
+                    out[local_gloss(row.concepticon_gloss, gls), rep[row.concepticon_id]] += 1
                     freqs[rep[row.concepticon_id]] += 1
+    return out, freqs
+
+
+def _write_linking_data(api, lang: str, rep):
+    out, freqs = _get_frequencies(api, lang, rep)
 
     if lang.iso2 == "en":
         for cset in api.conceptsets.values():
-            gloss = rep[cset.gloss]
-            cid = rep[cset.id]
-            if cset.ontological_category == "Person/Thing":
-                out[gloss + "///the " + cset.gloss.lower(), cid] = freqs[cid]
-                out[gloss + "///the " + cset.gloss.lower() + "s", cid] = freqs[cid]
-            elif cset.ontological_category == "Action/Process":
-                out[gloss + "///to " + cset.gloss.lower(), cid] = freqs[cid]
-            elif cset.ontological_category == "Property":
-                out[gloss + "///" + cset.gloss.lower() + " (adjective)", cid] = freqs[cid]
-            elif cset.ontological_category == "Classifier":
-                out[gloss + "///" + cset.gloss.lower() + " (classifier)", cid] = freqs[cid]
-            else:
-                out[gloss + "///" + cset.gloss.lower(), cid] = freqs[cid]
+            lgloss = cset.gloss.lower()
 
-    p = api.path("mappings", "map-{0}.tsv".format(lang.iso2))
+            if cset.ontological_category == "Person/Thing":
+                lgloss = "the " + lgloss
+                out[_local_gloss(rep, cset.gloss, lgloss + "s"), rep[cset.id]] = freqs[rep[cset.id]]
+            elif cset.ontological_category == "Action/Process":
+                lgloss = "to " + lgloss
+            elif cset.ontological_category == "Property":
+                lgloss += " (adjective)"
+            elif cset.ontological_category == "Classifier":
+                lgloss += " (classifier)"
+
+            out[_local_gloss(rep, cset.gloss, lgloss), rep[cset.id]] = freqs[rep[cset.id]]
+
+    p = api.path("mappings", f"map-{lang.iso2}.tsv")
     if not p.parent.exists():
         p.parent.mkdir()
-    with UnicodeWriter(p, delimiter="\t") as f:
+    with UnicodeWriter(p) as f:
         f.writerow(["ID", "GLOSS", "PRIORITY"])
-        for i, (gloss, cid) in enumerate(sorted(out)):
+        for gloss, cid in sorted(out):
             f.writerow([cid, gloss, out[gloss, cid]])

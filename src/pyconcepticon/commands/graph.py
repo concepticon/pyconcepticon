@@ -9,15 +9,17 @@ Expects well-formed concept lists as input, i.e. TSV files, with columns
 - NUMBER
 - CONCEPTICON_GLOSS
 """
+import json
+import dataclasses
+from typing import Any
+
 from clldutils.clilib import Table, add_format
 
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist
 from pyconcepticon.util import read_dicts
 
-import json
 
-
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser, multiple=True)
     add_format(parser, default='simple')
     parser.add_argument(
@@ -25,11 +27,6 @@ def register(parser):
         action="store",
         default="LINKED_CONCEPTS",
         help="specify the column containing linked concepts")
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='print check descriptions',
-        default=False)
     parser.add_argument(
         "--threshold",
         action='store',
@@ -51,18 +48,45 @@ def register(parser):
     )
 
 
-def run(args):
-    header = args.weights
+@dataclasses.dataclass(frozen=True)
+class Link:
+    """A Link is a JSON object in a graph-valued column, linking to a conceptset."""
+    id: str
+    name: str
+    properties: dict[str, Any]
 
-    with Table(args, *["SOURCE_ID", "SOURCE_NAME", "TARGET_ID", "TARGET_NAME"] + header) as t:
-        for idx, item in enumerate(read_dicts(get_conceptlist(args, path_only=True)[0]), start=2):
-            links = json.loads(item[args.graph_column])
-            source_id, source_name = (item["ID"], item.get("ENGLISH", item.get("GLOSS", "?")))
-            for link in links:
-                link_id, link_name = link["ID"], link["NAME"]
-                if args.threshold and args.threshold_property:
-                    if link[args.threshold_property] < args.threshold:
-                        continue
-                if not header:
-                    header = [key for key in link if key not in ["ID", "NAME"]]
-                t.append([source_id, source_name, link_id, link_name] + [link[h] for h in header])
+    @classmethod
+    def from_json_object(cls, obj: dict[str, Any]):
+        """Turn JSON object into a Link."""
+        return cls(id=obj.pop('ID'), name=obj.pop('NAME'), properties=obj)
+
+
+@dataclasses.dataclass(frozen=True)
+class GraphItem:
+    """A list of graph nodes specified in a column in c conceptlist."""
+    links: list[Link]
+    id: str
+    gloss: str
+
+
+def run(args):  # pylint: disable=C0116
+    header, rows = args.weights, []
+
+    for item in read_dicts(get_conceptlist(args, path_only=True)[0]):
+        item: GraphItem = GraphItem(
+            links=[Link.from_json_object(obj) for obj in json.loads(item[args.graph_column])],
+            id=item["ID"],
+            gloss=item.get("ENGLISH", item.get("GLOSS", "?")))
+
+        for link in item.links:
+            if args.threshold and args.threshold_property:
+                if link.properties[args.threshold_property] < args.threshold:
+                    continue
+            if not header:
+                header = list(link.properties.keys())
+            rows.append(
+                [item.id, item.gloss, link.id, link.name] + [link.properties[h] for h in header])
+
+    with Table(args, "SOURCE_ID", "SOURCE_NAME", "TARGET_ID", "TARGET_NAME", *header) as t:
+        for row in rows:
+            t.append(row)

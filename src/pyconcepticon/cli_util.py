@@ -1,16 +1,23 @@
+"""
+Helpers called from concepticon commands.
+"""
 import pathlib
+import argparse
+from typing import Union
 
 from clldutils.clilib import ParserError
 
 from pyconcepticon.models import Conceptlist
 
 
-def readme(outdir, text):
+def readme(outdir, text: Union[str, list[str]]):
+    """Write text to a README in outdir."""
     outdir.joinpath("README.md").write_text(
         "\n".join(text) if isinstance(text, list) else text, encoding="utf8")
 
 
 def add_search(parser):
+    """Add options to specify a concept mapping strategy."""
     parser.add_argument(
         '--full-search',
         help="select between approximate search (default) and full search",
@@ -24,7 +31,8 @@ def add_search(parser):
 
 
 def add_conceptlist(parser, multiple=False):
-    kw = dict(
+    """Add an option to specify one or more conceptlists."""
+    kw = dict(  # pylint: disable=R1735
         metavar='CONCEPTLIST',
         help='Path to (or ID of) concept list in TSV format',
         type=pathlib.Path)
@@ -33,7 +41,11 @@ def add_conceptlist(parser, multiple=False):
     parser.add_argument('conceptlist', **kw)
 
 
-def get_conceptlist(args, path_only=False):
+def get_conceptlist(
+        args: argparse.Namespace,
+        path_only: bool = False,
+) -> Union[Union[pathlib.Path, Conceptlist], list[Union[pathlib.Path, Conceptlist]]]:
+    """Get conceptlist(s) as specified in args."""
     if isinstance(args.conceptlist, list):
         return [_get_conceptlist(cl, args, path_only=path_only) for cl in args.conceptlist]
     return _get_conceptlist(args.conceptlist, args, path_only=path_only)
@@ -58,4 +70,4 @@ def _get_conceptlist(cl, args, path_only=False):
             if cl.name in args.repos.conceptlists:
                 return args.repos.conceptlists[cl.name]
 
-    raise ParserError("no conceptlist %s found" % cl)
+    raise ParserError(f"no conceptlist {cl} found")

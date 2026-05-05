@@ -37,7 +37,7 @@ def test_Conceptlist(fixturedir, api):
 
     with pytest.raises(ValueError):
         Conceptlist(
-            api=None,
+            _api=None,
             id='xy',
             author='x',
             year='1234',
@@ -60,7 +60,7 @@ def test_Conceptset(api):
 
     d = {a: '' for a in Conceptset.public_fields()}
     d['semanticfield'] = 'xx'
-    d['api'] = api
+    d['_api'] = api
     with pytest.raises(ValueError):
         Conceptset(**d)
 

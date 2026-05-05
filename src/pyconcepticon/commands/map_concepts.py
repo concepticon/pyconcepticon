@@ -14,7 +14,7 @@ from clldutils.clilib import ParserError
 from pyconcepticon.cli_util import add_conceptlist, get_conceptlist, _get_conceptlist, add_search
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     add_conceptlist(parser)
     parser.add_argument(
         '--reference-list',
@@ -33,7 +33,7 @@ def register(parser):
         default=None)
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     # Note: Due to https://github.com/concepticon/pyconcepticon/issues/10 we require specification
     # of an output file on Windows:
     if platform.system() == 'Windows' and not args.output:  # pragma: no cover

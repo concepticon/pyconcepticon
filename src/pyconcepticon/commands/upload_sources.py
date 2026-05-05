@@ -17,14 +17,14 @@ from pyconcepticon.util import SourcesCatalog
 from pyconcepticon.cli_util import readme
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         '--cdstar-catalog',
         default=os.environ.get("CDSTAR_CATALOG"),
         help='Path to global CDSTAR catalog')
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     toc = ["# Sources\n"]
     with SourcesCatalog(args.repos.data_path("sources", "cdstar.json")) as lcat:
         with Catalog(
@@ -43,6 +43,6 @@ def run(args):
 
         for key in sorted(lcat.items):
             spec = lcat.get(key)
-            toc.append("- [{0} [PDF {1}]]({2})".format(key, format_size(spec["size"]), spec["url"]))
+            toc.append(f'- [{key} [PDF {format_size(spec["size"])}]]({spec["url"]})')
 
     readme(args.repos.data_path("sources"), toc)

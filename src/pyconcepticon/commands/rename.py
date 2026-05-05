@@ -7,14 +7,14 @@ Rename a conceptlist,
 """
 import collections
 
-from csvw.dsv import UnicodeWriter, reader
 from clldutils.clilib import ParserError
 from clldutils import jsonlib
 
 from pyconcepticon.models import MD_SUFFIX, CONCEPTLIST_ID_PATTERN
+from pyconcepticon.util import UnicodeWriter, reader, rewrite
 
 
-def register(parser):
+def register(parser):  # pylint: disable=C0116
     parser.add_argument(
         'from_',
         metavar='FROM',
@@ -27,33 +27,32 @@ def register(parser):
     )
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     if not CONCEPTLIST_ID_PATTERN.match(args.to):
-        raise ParserError('Invalid conceptlist ID {0}'.format(args.to))  # pragma: no cover
+        raise ParserError(f'Invalid conceptlist ID {args.to}')  # pragma: no cover
     if args.to in args.repos.conceptlists:
-        raise ParserError('Target ID {0} exists!'.format(args.to))  # pragma: no cover
+        raise ParserError(f'Target ID {args.to} exists!')  # pragma: no cover
     try:
         cl = args.repos.conceptlists[args.from_]
-    except KeyError:  # pragma: no cover
-        raise ParserError('Source conceptlist {0} does not exist!'.format(args.from_))
+    except KeyError as e:  # pragma: no cover
+        raise ParserError(f'Source conceptlist {args.from_} does not exist!') from e
+
+    def retire(what, from_, to_):
+        args.repos.add_retirement(what, {'id': from_, 'comment': 'renaming', 'replacement': to_})
 
     # write the adapted concept list to the new path:
-    with UnicodeWriter(
-            cl.path.parent / cl.path.name.replace(args.from_, args.to), delimiter='\t') as writer:
-        header = []
-        for i, row in enumerate(reader(cl.path, delimiter='\t')):
+    with UnicodeWriter(cl.path.parent / cl.path.name.replace(args.from_, args.to)) as writer:
+        header: dict[str, int] = {}
+        for i, row in enumerate(reader(cl.path)):
             if i == 0:
-                header = row
-                writer.writerow(row)
-                header = {v: k for k, v in enumerate(header)}  # Map col name to row index
+                header = {v: k for k, v in enumerate(row)}  # Map col name to row index
             else:
                 oid = row[header['ID']]
                 assert oid.startswith(args.from_)
                 nid = oid.replace(args.from_, args.to)
-                args.repos.add_retirement(
-                    'Concept', dict(id=oid, comment='renaming', replacement=nid))
+                retire('Concept', oid, nid)
                 row[header['ID']] = nid
-                writer.writerow(row)
+            writer.writerow(row)
 
     # write adapted metadata to the new path:
     fname_md = cl.path.name.replace(args.from_, args.to) + MD_SUFFIX
@@ -69,17 +68,11 @@ def run(args):
     cl.path.parent.joinpath(cl.path.name + MD_SUFFIX).unlink()
 
     # adapt conceptlists.tsv
-    rows = []
-    for row in reader(args.repos.data_path('conceptlists.tsv'), delimiter='\t'):
-        rows.append([col.replace(args.from_, args.to) if col else col for col in row])
+    rewrite(
+        args.repos.data_path('conceptlists.tsv'),
+        lambda _, row: [col.replace(args.from_, args.to) if col else col for col in row])
 
-    with UnicodeWriter(args.repos.data_path('conceptlists.tsv'), delimiter='\t') as writer:
-        writer.writerows(rows)
-
-    args.repos.add_retirement(
-        'Conceptlist', dict(id=args.from_, comment='renaming', replacement=args.to))
-
-    print("""Please run
-grep -r "{0}" concepticondata/ | grep -v retired.json
-
-to confirm the renaming was complete!""".format(args.from_))
+    retire('Conceptlist', args.from_, args.to)
+    print(f'Please run\n'
+          f'grep -r "{args.from_}" concepticondata/ | grep -v retired.json'
+          f'\n\nto confirm the renaming was complete!')

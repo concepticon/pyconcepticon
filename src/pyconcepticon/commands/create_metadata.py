@@ -4,7 +4,7 @@ Create metadata files for all conceptlists.
 from csvw import Column
 
 
-def run(args):
+def run(args):  # pylint: disable=C0116
     for cl in args.repos.conceptlists.values():
         mdpath = cl.path.parent.joinpath(cl.path.name + '-metadata.json')
         if not mdpath.exists():
@@ -20,6 +20,6 @@ def run(args):
             for col in cl.cols_in_list:
                 if col not in cols_in_md:
                     cl.metadata.tableSchema.columns.append(
-                        Column.fromvalue(dict(name=col, datatype='string')))
+                        Column.fromvalue({'name': col, 'datatype': 'string'}))
 
             cl.tg.to_file(mdpath)

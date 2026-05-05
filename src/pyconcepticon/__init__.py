@@ -1,3 +1,6 @@
+"""
+Functionality to access and curate the Concepticon dataset.
+"""
 # noqa
 from pyconcepticon.api import Concepticon  # noqa: F401
 
