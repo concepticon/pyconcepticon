@@ -226,6 +226,7 @@ class Concepticon(API):
         """
         :returns: `generator` of tuples (searchterm, concepticon_id, concepticon_gloss, similarity).
         """
+        entries = list(entries)
         if to is None:
             to = [t for t in self._get_map_for_language(language, None)
                   if mincsid is None or (int(t[0]) >= mincsid)]

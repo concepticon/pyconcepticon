@@ -93,6 +93,18 @@ def test_lookup(api):
         assert len(list(api.lookup(['thin'], full_search=True))[0]) >= 4
 
 
+@pytest.mark.parametrize('full_search', [False, True])
+@pytest.mark.parametrize('queries', [list, tuple, iter])
+def test_lookup_iterable(api, full_search, queries):
+    expected = [
+        {('sky', '1732', 'SKY', 2)},
+        {('sun', '1343', 'SUN', 2)},
+        {('sky', '1732', 'SKY', 2)},
+    ]
+    assert list(api.lookup(queries(['sky', 'sun', 'sky']), full_search=full_search)) == expected
+    assert list(api.lookup(queries([]), full_search=full_search)) == []
+
+
 def test_check(api, capsys):
     assert not api.check()
     out, _ = capsys.readouterr()
