@@ -75,14 +75,6 @@ def test_graph(capsys, _main, tmprepos):
     assert 'CASSAVA' not in out
 
 
-def test_upload_sources(_main, mocker, tmprepos):
-    tmprepos.joinpath('c').write_text('{}', encoding='utf8')
-    mocker.patch(
-        'pyconcepticon.commands.upload_sources.os',
-        mocker.Mock(environ=collections.defaultdict(lambda: 'x')))
-    _main('upload_sources', '--cdstar-catalog', str(tmprepos / 'c'))
-
-
 @pytest.mark.filterwarnings("ignore:Unspecified column")
 def test_notlinked(_main, capsys):
     _main('notlinked --full')

@@ -8,14 +8,12 @@ import operator
 import functools
 import collections
 from collections.abc import Sequence, Iterable
-from typing import Any, Optional, Union, TypeVar, Callable
+from typing import Any, Union, TypeVar, Callable
 
-from pycdstar.resource import Object
-from clldutils import jsonlib
 from csvw import dsv
 
 __all__ = [
-    'natural_sort', 'to_dict', 'SourcesCatalog', 'UnicodeWriter', 'reader', 'read_dicts',
+    'natural_sort', 'to_dict', 'UnicodeWriter', 'reader', 'read_dicts',
     'ConceptlistWithNetworksWriter']
 
 T = TypeVar('T')
@@ -162,41 +160,3 @@ class ConceptlistWithNetworksWriter(list):
                 writer.writerow([
                     json.dumps(row[key]) if key.endswith('_CONCEPTS') else row[key]
                     for key in header])
-
-
-class SourcesCatalog:
-    """A catalog for the metadata of conceptlist sources."""
-    def __init__(self, path):
-        self.path = pathlib.Path(path)
-        self.items: dict[str, dict[str, Any]] = {}
-        if self.path.exists():
-            self.items = jsonlib.load(self.path)
-
-    def __contains__(self, item):
-        return item in self.items
-
-    def get(self, item) -> Optional[dict[str, Any]]:  # pylint: disable=C0116
-        return self.items.get(item)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        jsonlib.dump(
-            collections.OrderedDict(
-                [(k, collections.OrderedDict(sorted(v.items())))
-                 for k, v in sorted(self.items.items())]),
-            self.path,
-            indent=4)
-
-    def add(self, key: str, obj: Object) -> dict[str, Any]:
-        """Add the metadata of a pycdstar Object to the catalog."""
-        bsid = obj.bitstreams[0].id
-        self.items[key] = collections.OrderedDict([
-            ('url', f'https://cdstar.eva.mpg.de/bitstreams/{obj.id}/{bsid}'),
-            ('objid', obj.id),
-            ('original', bsid),
-            ('size', obj.bitstreams[0].size),
-            ('mimetype', obj.bitstreams[0].mimetype),
-        ])
-        return self.items[key]

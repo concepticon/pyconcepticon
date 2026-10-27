@@ -1,8 +1,6 @@
 import json
 
 import pytest
-from cdstarcat.catalog import Object, Bitstream
-from clldutils.jsonlib import load
 from csvw.dsv import reader
 
 from pyconcepticon.util import *
@@ -31,17 +29,6 @@ def test_read_dicts(api):
 def test_to_dict():
     with pytest.raises(ValueError):
         to_dict([None, None], id)
-
-
-def test_SourcesCatalog(tmp_path):
-    cat_path = tmp_path / 'test.json'
-    with SourcesCatalog(cat_path) as cat:
-        cat.add(
-            'key', Object('id', [Bitstream('bsid', 5, 'text/plain', '', '', '')], {}))
-        assert 'key' in cat
-        assert 'url' in cat.get('key')
-
-    assert 'key' in load(str(cat_path))
 
 
 def test_natural_sort():

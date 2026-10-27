@@ -99,7 +99,9 @@ class Concepticon(API):
 
     @functools.cached_property
     def sources(self) -> dict[str, dict[str, Any]]:  # pylint: disable=C0116
-        return jsonlib.load(self.data_path('sources', 'cdstar.json'))
+        def spec(p):
+            return {"mimetype": "application/pdf", "size": p.stat().st_size}
+        return {p.stem: spec(p) for p in self.data_path('sources').glob('*.pdf')}
 
     @functools.cached_property
     def retirements(self) -> dict[str, list[Retirement]]:
