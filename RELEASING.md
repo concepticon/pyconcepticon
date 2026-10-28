@@ -19,6 +19,7 @@ pylint src
 - Update the version number, by removing the trailing `.dev0` in:
   - `setup.cfg`
   - `src/pyconcepticon/__init__.py`
+  - `CHANGELOG.md`
 
 - Create the release commit:
 ```shell
