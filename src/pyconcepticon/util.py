@@ -53,16 +53,11 @@ def to_dict(
     return res
 
 
-def read_all(fname: PathType, **kw) -> list[dict[str, str]]:
-    """Read all rows in a TSV file."""
-    kw['dicts'] = True
-    kw.setdefault('delimiter', '\t')
-    return list(dsv.reader(fname, **kw))
-
-
 def read_dicts(fname: PathType, schema=None, **kw) -> list[dict[str, Union[str, int, float]]]:
     """Read TSV rows a lightly typed dicts."""
-    res = read_all(fname, **kw)
+    kw['dicts'] = True
+    kw.setdefault('delimiter', '\t')
+    res = list(dsv.reader(fname, **kw))
     if schema:
         def identity(x):
             return x

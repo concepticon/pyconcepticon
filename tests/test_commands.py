@@ -5,7 +5,7 @@ import logging
 import pytest
 from clldutils.misc import nfilter
 
-from pyconcepticon.util import read_all
+from pyconcepticon.util import read_dicts
 from pyconcepticon.__main__ import main
 
 
@@ -59,7 +59,7 @@ def test_rename(capsys, _main, tmprepos):
     _main('create_metadata')
     _main('rename', 'Sun-1991-1004', 'Moon-2011-234')
     assert tmprepos.joinpath('concepticondata/conceptlists/Moon-2011-234.tsv').exists()
-    for d in read_all(tmprepos.joinpath('concepticondata', 'conceptlists.tsv')):
+    for d in read_dicts(tmprepos.joinpath('concepticondata', 'conceptlists.tsv')):
         assert 'Sun-1991-1004' not in str(d)
         if d['ID'] == 'Moon-2011-234':
             break
@@ -138,7 +138,7 @@ def test_link(fixturedir, tmp_path, capsys, _main):
         _main('link', '.')
 
     def nattr(p, attr):
-        return len(nfilter([i.get(attr) for i in read_all(str(p))]))
+        return len(nfilter([i.get(attr) for i in read_dicts(str(p))]))
 
     test = tmp_path / 'test.tsv'
     shutil.copy(fixturedir.joinpath('conceptlist.tsv'), test)
