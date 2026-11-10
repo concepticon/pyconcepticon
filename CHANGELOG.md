@@ -1,5 +1,10 @@
 # Changes
 
+## Unreleased
+
+- Dropped compatibility with python < 3.11
+- Run tests on python 3.15
+
 
 ## [4.1.0] - 2026-10-28
 

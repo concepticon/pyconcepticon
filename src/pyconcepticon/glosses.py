@@ -3,15 +3,14 @@ Module provides functions for the handling of concept glosses in linguistic data
 """
 import re
 import enum
-from typing import Union, Literal, Callable, Any, Optional, get_args
 import functools
 import itertools
 import collections
 from collections.abc import Iterable, Generator
 import dataclasses
+from typing import Union, Literal, Callable, Any, Optional, get_args
 
 from .util import read_dicts, UnicodeWriter
-from ._compat import StrEnum
 
 __all__ = [
     'parse_gloss', 'Gloss', 'concept_map', 'Mapping', 'Similarity', 'Pos', 'map_list',
@@ -55,7 +54,7 @@ class Similarity(enum.IntEnum):
         return None  # pragma: no cover
 
 
-class GlossLanguage(StrEnum):
+class GlossLanguage(enum.StrEnum):
     """Languages used for glossing in conceptlists."""
     FRENCH = 'fr'
     ENGLISH = 'en'

@@ -7,7 +7,7 @@ from datetime import date
 
 from clldutils.path import git_describe
 from clldutils.jsonlib import dump
-from nameparser import HumanName
+import nameparser
 
 
 def register(parser):  # pylint: disable=C0116
@@ -40,8 +40,8 @@ def run(args):  # pylint: disable=C0116
         if (not e.end) and int(e.start) <= args.year]
     editor_names = []
     for e in current_editors:
-        name = HumanName(e.name)
-        editor_names.append(f'{name.last}, {name.first} {name.middle}'.strip())
+        name = nameparser.parse(e.name)
+        editor_names.append(f'{name.family}, {name.given} {name.middle}'.strip())
     editor_names = ' & '.join(editor_names)
     md = args.repos.dataset_metadata
     res = (f"{editor_names} (eds.) {args.year}. {md.title} {args.version}. {md.description}. "

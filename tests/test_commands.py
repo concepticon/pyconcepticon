@@ -1,7 +1,6 @@
 import shlex
 import shutil
 import logging
-import collections
 
 import pytest
 from clldutils.misc import nfilter
