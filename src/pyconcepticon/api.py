@@ -100,7 +100,7 @@ class Concepticon(API):
     @functools.cached_property
     def sources(self) -> dict[str, dict[str, Any]]:  # pylint: disable=C0116
         def spec(p):
-            return {"mimetype": "application/pdf", "size": p.stat().st_size}
+            return {"path": p, "mimetype": "application/pdf", "size": p.stat().st_size}
         return {p.stem: spec(p) for p in self.data_path('sources').glob('*.pdf')}
 
     @functools.cached_property

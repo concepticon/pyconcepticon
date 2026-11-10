@@ -69,6 +69,10 @@ def test_editors(api):
     assert len(api.editors) == 4
 
 
+def test_sources(api):
+    assert list(api.sources.values())[0]['path'].exists()
+
+
 def test_map(api, capsys, fixturedir):
     api.map(fixturedir.joinpath('conceptlist.tsv'))
     out, err = capsys.readouterr()
